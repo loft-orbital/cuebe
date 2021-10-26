@@ -1,4 +1,4 @@
-package release
+package manifest
 
 import (
 	"cuelang.org/go/cue"
@@ -11,14 +11,14 @@ type TypeMeta struct {
 }
 
 // ExtractManifests extract kubernetes manifests from a cue.Value
-func ExtractManifests(v cue.Value) []cue.Value {
-	manifests := []cue.Value{}
+func ExtractManifests(v cue.Value) []Manifest {
+	manifests := []Manifest{}
 	ctx := cuecontext.New()
 	kmanifest := ctx.EncodeType(TypeMeta{})
 
 	v.Walk(func(v cue.Value) bool {
 		if kmanifest.Subsumes(v) {
-			manifests = append(manifests, v)
+			manifests = append(manifests, New(v))
 			return false
 		}
 		return true
