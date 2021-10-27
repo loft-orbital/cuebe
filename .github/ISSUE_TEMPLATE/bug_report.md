@@ -24,10 +24,11 @@ assignees: ''
 
 ## Versions
 <!-- [MANDATORY] -->
-<!-- e.g. 1.0.0-alpha.1, use the content of `cuebe version` -->
- - *cuebe*:
-<!-- e.g. macOS 10.14.6 (18G4032) -->
- - *OS*:
+<!-- use the content of `cuebe version` -->
+```shell
+> cuebe version
+...
+```
 
 ## Additional context
 <!-- [OPTIONAL] -->

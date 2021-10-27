@@ -9,6 +9,11 @@ builds:
       - windows
       - darwin
     main: ./cmd/cuebe
+    ldflags:
+      - -s -w
+      - -X github.com/loft-orbital/cuebe/cmd/cuebe/cmd.version={{.Version}}
+      - -X github.com/loft-orbital/cuebe/cmd/cuebe/cmd.commit={{.Commit}}
+      - -X github.com/loft-orbital/cuebe/cmd/cuebe/cmd.date={{.Date}}
 archives:
   - replacements:
       darwin: Darwin
