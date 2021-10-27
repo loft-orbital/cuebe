@@ -25,7 +25,7 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/cue/load"
 	"cuelang.org/go/pkg/encoding/yaml"
-	"github.com/loft-orbital/cuebe/pkg/kubernetes"
+	"github.com/loft-orbital/cuebe/internal/kubernetes"
 	"github.com/loft-orbital/cuebe/pkg/manifest"
 	"github.com/spf13/cobra"
 	"go.mozilla.org/sops/v3"
