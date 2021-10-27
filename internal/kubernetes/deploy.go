@@ -16,6 +16,10 @@ limitations under the License.
 package kubernetes
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/banzaicloud/k8s-objectmatcher/patch"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,11 +30,20 @@ import (
 	"k8s.io/client-go/restmapper"
 )
 
-var metaAccessor = meta.NewAccessor()
+const lastAppliedConfig = "cuebe.loftorbital.com/last-applied-configuration"
+const defaultNamespace = "default"
 
-// Deploy deploys obj to the given cluster
+var (
+	metaAccessor = meta.NewAccessor()
+	annotator    = patch.NewAnnotator(lastAppliedConfig)
+	patchMaker   = patch.NewPatchMaker(annotator)
+)
+
+// Deploy deploys obj to the given cluster.
+// If the obj already exist in the cluster, a three way merge patch will be computed.
+// If the patch is not empty, the current object will be replaced by obj.
+// TODO support dry-run
 // TODO manage obj validation
-// TODO returns what has been done (creation, update)
 func Deploy(client kubernetes.Interface, restConfig rest.Config, obj runtime.Object) error {
 	groupResources, err := restmapper.GetAPIGroupResources(client.Discovery())
 	if err != nil {
@@ -40,8 +53,7 @@ func Deploy(client kubernetes.Interface, restConfig rest.Config, obj runtime.Obj
 
 	// Get some metadata needed to make the REST request.
 	gvk := obj.GetObjectKind().GroupVersionKind()
-	gk := schema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}
-	mapping, err := rm.RESTMapping(gk, gvk.Version)
+	mapping, err := rm.RESTMapping(schema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}, gvk.Version)
 	if err != nil {
 		return err
 	}
@@ -52,7 +64,7 @@ func Deploy(client kubernetes.Interface, restConfig rest.Config, obj runtime.Obj
 		return err
 	}
 
-	// Use the REST helper to create the object in the "default" namespace.
+	// Get useful object meta
 	helper := resource.NewHelper(restClient, mapping)
 	name, err := metaAccessor.Name(obj)
 	if err != nil {
@@ -63,15 +75,70 @@ func Deploy(client kubernetes.Interface, restConfig rest.Config, obj runtime.Obj
 		return err
 	}
 	if ns == "" && helper.NamespaceScoped {
-		ns = "default"
+		ns = defaultNamespace // Set default namespace for namespaced resource with no namespace
 	}
 
-	_, err = helper.Get(ns, name)
-	if err == nil {
-		_, err = helper.Replace(ns, name, true, obj) // Replace if already exist
-	} else if apierrors.IsNotFound(err) {
-		_, err = helper.Create(ns, true, obj) // Create otherwise
+	current, err := helper.Get(ns, name)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		// Object does not exist yet
+		return create(obj, ns, helper)
+	}
+	// Object already exist, check if we need to update it
+	patchResult, err := patchMaker.Calculate(current, obj, patch.IgnoreStatusFields())
+	if err != nil {
+		return err
 	}
 
-	return err
+	if patchResult.IsEmpty() {
+		// Nothing to do
+		fmt.Println(buildFeedback(gvk.Kind, name, "unchanged", helper.ServerDryRun))
+		return nil
+	}
+
+	// Update the object
+	return update(obj, ns, name, helper)
+}
+
+func update(obj runtime.Object, ns, name string, helper *resource.Helper) error {
+	if err := annotator.SetLastAppliedAnnotation(obj); err != nil { // Add last configuration annotation
+		return err
+	}
+	nobj, err := helper.Replace(ns, name, true, obj)
+	if err != nil {
+		return err
+	}
+	gvk := nobj.GetObjectKind().GroupVersionKind()
+	if err != nil {
+		return err
+	}
+	fmt.Println(buildFeedback(gvk.Kind, name, "updated", helper.ServerDryRun))
+	return nil
+}
+
+func create(obj runtime.Object, ns string, helper *resource.Helper) error {
+	if err := annotator.SetLastAppliedAnnotation(obj); err != nil { // Add last configuration annotation
+		return err
+	}
+	nobj, err := helper.Create(ns, true, obj) // Create the object
+	if err != nil {
+		return err
+	}
+	gvk := nobj.GetObjectKind().GroupVersionKind()
+	name, err := metaAccessor.Name(obj)
+	if err != nil {
+		return err
+	}
+	fmt.Println(buildFeedback(gvk.Kind, name, "created", helper.ServerDryRun))
+	return nil
+}
+
+func buildFeedback(kind, name, verb string, dryrun bool) string {
+	s := fmt.Sprintf("%s/%s %s", kind, name, verb)
+	if dryrun {
+		s += " (server dry run)"
+	}
+	return strings.ToLower(s)
 }

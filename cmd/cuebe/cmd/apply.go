@@ -148,7 +148,6 @@ func applyRun(opts *applyOpts) error {
 
 	// Deploy primary
 	for _, obj := range primary {
-		fmt.Println("Deploying primary", obj)
 		if err := kubernetes.Deploy(client, *config, obj); err != nil {
 			return fmt.Errorf("Failed to apply manifest: %w", err)
 		}
@@ -156,7 +155,6 @@ func applyRun(opts *applyOpts) error {
 
 	// Deploy secondary
 	for _, obj := range secondary {
-		fmt.Println("Deploying secondary", obj)
 		if err := kubernetes.Deploy(client, *config, obj); err != nil {
 			return fmt.Errorf("Failed to apply manifest: %w", err)
 		}

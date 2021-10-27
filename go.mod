@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	cuelang.org/go v0.4.0
+	github.com/banzaicloud/k8s-objectmatcher v1.6.1
 	github.com/spf13/cobra v1.2.1
 	github.com/stretchr/testify v1.7.0
 	go.mozilla.org/sops/v3 v3.7.1
@@ -14,6 +15,7 @@ require (
 
 require (
 	cloud.google.com/go v0.97.0 // indirect
+	emperror.dev/errors v0.8.0 // indirect
 	filippo.io/age v1.0.0 // indirect
 	github.com/Azure/azure-sdk-for-go v58.3.0+incompatible // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
@@ -109,6 +111,7 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/net v0.0.0-20211020060615-d418f374d309 // indirect
 	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1 // indirect
