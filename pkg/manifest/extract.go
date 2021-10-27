@@ -10,8 +10,8 @@ type TypeMeta struct {
 	ApiVersion string `json:"apiVersion"`
 }
 
-// ExtractManifests extract kubernetes manifests from a cue.Value
-func ExtractManifests(v cue.Value) []Manifest {
+// Extract extract kubernetes manifests from a cue.Value
+func Extract(v cue.Value) []Manifest {
 	manifests := []Manifest{}
 	ctx := cuecontext.New()
 	kmanifest := ctx.EncodeType(TypeMeta{})

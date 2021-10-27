@@ -11,7 +11,7 @@ BIN = $(addprefix $(BUILD_DIR), $(notdir $(CURDIR)))
 LDFLAGS = -s -w
 
 $(BIN): $(BUILD_FILES)
-	$(GOBUILD) -trimpath -o "$@" -ldflags='$(LDFLAGS)'
+	$(GOBUILD) -trimpath -o "$@" -ldflags='$(LDFLAGS)' cmd/cuebe/main.go
 build: $(BIN)
 .PHONY: build
 

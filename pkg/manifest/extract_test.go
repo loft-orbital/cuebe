@@ -43,7 +43,7 @@ func TestExtractManifestt(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			ctx := cuecontext.New()
 			v := ctx.CompileString(tc.input)
-			mfs := ExtractManifests(v)
+			mfs := Extract(v)
 			assert.Len(t, mfs, tc.count)
 		})
 	}
@@ -57,11 +57,11 @@ func BenchmarkExtractManifest(b *testing.B) {
 			  }`
 	ctx := cuecontext.New()
 	v := ctx.CompileString(input)
-	mfs := ExtractManifests(v)
+	mfs := Extract(v)
 	assert.Len(b, mfs, 3)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ExtractManifests(v)
+		Extract(v)
 	}
 }
