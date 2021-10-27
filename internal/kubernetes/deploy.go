@@ -31,9 +31,8 @@ var metaAccessor = meta.NewAccessor()
 // Deploy deploys obj to the given cluster
 // TODO manage obj validation
 // TODO returns what has been done (creation, update)
-func Deploy(kubeClientset kubernetes.Interface, restConfig rest.Config, obj runtime.Object) error {
-	// Create a REST mapper that tracks information about the available resources in the cluster.
-	groupResources, err := restmapper.GetAPIGroupResources(kubeClientset.Discovery())
+func Deploy(client kubernetes.Interface, restConfig rest.Config, obj runtime.Object) error {
+	groupResources, err := restmapper.GetAPIGroupResources(client.Discovery())
 	if err != nil {
 		return err
 	}

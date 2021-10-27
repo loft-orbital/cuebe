@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"cuelang.org/go/cue/cuecontext"
-	"github.com/tj/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExtractManifestt(t *testing.T) {

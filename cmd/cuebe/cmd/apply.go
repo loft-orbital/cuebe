@@ -30,6 +30,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.mozilla.org/sops/v3"
 	"go.mozilla.org/sops/v3/decrypt"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type applyOpts struct {
@@ -119,6 +120,7 @@ func applyRun(opts *applyOpts) error {
 	}
 
 	// Get kubernetes client
+	// TODO extract context from option
 	config, client, err := kubernetes.DefaultConfigClient("docker-desktop")
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve kubernetes configuration")
@@ -129,13 +131,32 @@ func applyRun(opts *applyOpts) error {
 	if len(mfs) <= 0 {
 		return errors.New("Could not found any kubernetes manifest")
 	}
-	// TODO order manifests
+	// Decode them to kubernetes runtime object
+	objs := make([]runtime.Object, len(mfs))
 	// Deploy manifests
-	for _, m := range mfs {
+	for i, m := range mfs {
 		obj, err := m.Decode()
 		if err != nil {
 			return fmt.Errorf("Failed to decode value %s: %w", m, err)
 		}
+		objs[i] = obj
+	}
+	primary, secondary := kubernetes.SplitObj(objs)
+	if err != nil {
+		return fmt.Errorf("Failed to split manifests: %w", err)
+	}
+
+	// Deploy primary
+	for _, obj := range primary {
+		fmt.Println("Deploying primary", obj)
+		if err := kubernetes.Deploy(client, *config, obj); err != nil {
+			return fmt.Errorf("Failed to apply manifest: %w", err)
+		}
+	}
+
+	// Deploy secondary
+	for _, obj := range secondary {
+		fmt.Println("Deploying secondary", obj)
 		if err := kubernetes.Deploy(client, *config, obj); err != nil {
 			return fmt.Errorf("Failed to apply manifest: %w", err)
 		}

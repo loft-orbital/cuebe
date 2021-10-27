@@ -5,7 +5,7 @@ go 1.17
 require (
 	cuelang.org/go v0.4.0
 	github.com/spf13/cobra v1.2.1
-	github.com/tj/assert v0.0.3
+	github.com/stretchr/testify v1.7.0
 	go.mozilla.org/sops/v3 v3.7.1
 	k8s.io/apimachinery v0.22.2
 	k8s.io/cli-runtime v0.22.2
@@ -104,7 +104,6 @@ require (
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/xlab/treeprint v0.0.0-20181112141820-a009c3971eca // indirect
 	go.mozilla.org/gopgagent v0.0.0-20170926210634-4d7ea76ff71a // indirect
 	go.opencensus.io v0.23.0 // indirect
