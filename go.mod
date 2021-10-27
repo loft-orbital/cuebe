@@ -1,4 +1,4 @@
-module github.com/b4nst/cuebe
+module github.com/loft-orbital/cuebe
 
 go 1.17
 

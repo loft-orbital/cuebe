@@ -1,5 +1,5 @@
 /*
-Copyright © 2021 b4nst
+Copyright © 2021 loft-orbital
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import "github.com/b4nst/cuebe/cmd/cuebe/cmd"
+import "github.com/loft-orbital/cuebe/cmd/cuebe/cmd"
 
 func main() {
 	cmd.Execute()

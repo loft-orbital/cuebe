@@ -1,3 +1,18 @@
+/*
+Copyright © 2021 Loft Orbital
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package cmd
 
 import (
@@ -10,8 +25,8 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/cue/load"
 	"cuelang.org/go/pkg/encoding/yaml"
-	"github.com/b4nst/cuebe/pkg/kubernetes"
-	"github.com/b4nst/cuebe/pkg/manifest"
+	"github.com/loft-orbital/cuebe/pkg/kubernetes"
+	"github.com/loft-orbital/cuebe/pkg/manifest"
 	"github.com/spf13/cobra"
 	"go.mozilla.org/sops/v3"
 	"go.mozilla.org/sops/v3/decrypt"
