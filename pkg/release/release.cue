@@ -1,17 +1,17 @@
 package release
 
 #Release: {
-	name: string
+  name: string
 
-	manifests: {
-		[string]: [Kind=string]: [Name=string]: {
-			kind: Kind
-			metadata: name: Name
-			...
-		}
+	// Manifests basic structure
+	manifests: [Namespace=string]: [Kind=string]: [Name=string]: {
+		kind: Kind
+		metadata: name:   Name
+		...
+	}
 
-		[Ns = !="$global"]: [string]: [string]: {
-			metadata: namespace: Ns
-		}
+	// Only set namespace when Namespace != "$root"
+	manifests: [Namespace = (!="$root")]: [Kind=string]: [Name=string]: {
+		metadata: namespace: Namespace
 	}
 }
