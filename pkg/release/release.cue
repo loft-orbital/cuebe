@@ -1,12 +1,12 @@
 package release
 
 #Release: {
-  name: string
+	name: string
 
 	// Manifests basic structure
 	manifests: [Namespace=string]: [Kind=string]: [Name=string]: {
 		kind: Kind
-		metadata: name:   Name
+		metadata: name: Name
 		...
 	}
 
