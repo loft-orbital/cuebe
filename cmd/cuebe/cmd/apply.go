@@ -135,7 +135,7 @@ func applyRun(opts *applyOpts) error {
 	objs := make([]runtime.Object, len(mfs))
 	// Deploy manifests
 	for i, m := range mfs {
-		obj, err := m.Decode()
+		obj, err := m.ToObj()
 		if err != nil {
 			return fmt.Errorf("Failed to decode value %s: %w", m, err)
 		}
