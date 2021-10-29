@@ -32,7 +32,7 @@ metadata: name: "my-cm"
 	ctx := cuecontext.New()
 	m := New(ctx.CompileString(raw))
 
-	obj, err := m.Decode()
+	obj, err := m.ToObj()
 	assert.NoError(t, err)
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	assert.Equal(t, "v1", gvk.Version)
@@ -46,7 +46,7 @@ apiVersion: "v1"
 metadata: name: "my-cm"
 `
 	m = New(ctx.CompileString(raw))
-	obj, err = m.Decode()
+	obj, err = m.ToObj()
 	assert.Error(t, err)
 	assert.Regexp(t, "incomplete value", err)
 
@@ -57,6 +57,6 @@ metadata: name: "my-cm"
 `
 
 	m = New(ctx.CompileString(raw))
-	obj, err = m.Decode()
+	obj, err = m.ToObj()
 	assert.EqualError(t, err, "decoding manifest: Object 'Kind' is missing in '{\"apiVersion\":\"v1\",\"metadata\":{\"name\":\"my-cm\"}}'")
 }
