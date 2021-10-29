@@ -16,6 +16,8 @@ limitations under the License.
 package cmd
 
 import (
+	"container/list"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -30,7 +32,6 @@ import (
 	"github.com/spf13/cobra"
 	"go.mozilla.org/sops/v3"
 	"go.mozilla.org/sops/v3/decrypt"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type applyOpts struct {
@@ -121,7 +122,7 @@ func applyRun(opts *applyOpts) error {
 
 	// Get kubernetes client
 	// TODO extract context from option
-	config, client, err := kubernetes.DefaultConfigClient("docker-desktop")
+	config, err := kubernetes.DefaultConfig("docker-desktop")
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve kubernetes configuration")
 	}
@@ -132,35 +133,20 @@ func applyRun(opts *applyOpts) error {
 		return errors.New("Could not found any kubernetes manifest")
 	}
 	// Decode them to kubernetes runtime object
-	objs := make([]runtime.Object, len(mfs))
+	objs := list.New()
 	// Deploy manifests
-	for i, m := range mfs {
+	for _, m := range mfs {
 		obj, err := m.ToObj()
 		if err != nil {
 			return fmt.Errorf("Failed to decode value %s: %w", m, err)
 		}
-		objs[i] = obj
-	}
-	primary, secondary := kubernetes.SplitObj(objs)
-	if err != nil {
-		return fmt.Errorf("Failed to split manifests: %w", err)
-	}
-
-	// Deploy primary
-	for _, obj := range primary {
-		if err := kubernetes.Deploy(client, *config, obj); err != nil {
-			return fmt.Errorf("Failed to apply manifest: %w", err)
+		if obj.GetKind() == "Namespace" {
+			objs.PushFront(obj)
+		} else {
+			objs.PushBack(obj)
 		}
 	}
-
-	// Deploy secondary
-	for _, obj := range secondary {
-		if err := kubernetes.Deploy(client, *config, obj); err != nil {
-			return fmt.Errorf("Failed to apply manifest: %w", err)
-		}
-	}
-
-	return nil
+	return kubernetes.PatchObjects(context.Background(), config, objs)
 }
 
 // TODO supports other format (json)
