@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/banzaicloud/k8s-objectmatcher/patch"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -34,14 +33,7 @@ import (
 	"k8s.io/client-go/restmapper"
 )
 
-const lastAppliedConfig = "cuebe.loftorbital.com/last-applied-configuration"
 const defaultNamespace = "default"
-
-var (
-	metaAccessor = meta.NewAccessor()
-	annotator    = patch.NewAnnotator(lastAppliedConfig)
-	patchMaker   = patch.NewPatchMaker(annotator)
-)
 
 // PatchObjects patches a list of *unstructured.Unstructured object
 func PatchObjects(ctx context.Context, cfg *rest.Config, objs *list.List) error {
@@ -88,7 +80,7 @@ func PatchObjects(ctx context.Context, cfg *rest.Config, objs *list.List) error 
 					// Namespaced resources
 					ns := obj.GetNamespace()
 					if ns == "" {
-						ns = "default"
+						ns = defaultNamespace
 					}
 					dr = dync.Resource(mapping.Resource).Namespace(ns)
 				} else {
