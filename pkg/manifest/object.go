@@ -22,10 +22,10 @@ import (
 )
 
 // ToObj transform a manifest into an unstructured object.
-func (m Manifest) ToObj() (*unstructured.Unstructured, error) {
-	unstruct := &unstructured.Unstructured{}
-	if err := m.Decode(unstruct); err != nil {
-		return nil, fmt.Errorf("decoding manifest: %w", err)
+func (m Manifest) ToObj() (unstructured.Unstructured, error) {
+	unstruct := unstructured.Unstructured{}
+	if err := m.Decode(&unstruct); err != nil {
+		return unstruct, fmt.Errorf("decoding manifest: %w", err)
 	}
 	return unstruct, nil
 }

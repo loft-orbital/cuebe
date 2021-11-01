@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDecode(t *testing.T) {
+func TestToObj(t *testing.T) {
 	// Nominal case
 	raw := `
 kind: "ConfigMap"
