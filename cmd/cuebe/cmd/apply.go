@@ -16,7 +16,6 @@ limitations under the License.
 package cmd
 
 import (
-	"container/list"
 	"context"
 	"errors"
 	"fmt"
@@ -28,7 +27,6 @@ import (
 	"cuelang.org/go/cue/load"
 	"cuelang.org/go/pkg/encoding/yaml"
 	"github.com/loft-orbital/cuebe/internal/kubernetes"
-	"github.com/loft-orbital/cuebe/pkg/manifest"
 	"github.com/spf13/cobra"
 	"go.mozilla.org/sops/v3"
 	"go.mozilla.org/sops/v3/decrypt"
@@ -120,33 +118,14 @@ func applyRun(opts *applyOpts) error {
 		return fmt.Errorf("Failed to inject values: %w", err)
 	}
 
-	// Get kubernetes client
-	// TODO extract context from option
-	config, err := kubernetes.DefaultConfig("docker-desktop")
+	// Build release
+	r, err := kubernetes.NewReleaseFor(value, opts.Context, opts.Context)
 	if err != nil {
-		return fmt.Errorf("Failed to retrieve kubernetes configuration")
+		return fmt.Errorf("Failed to buid release: %w", err)
 	}
-
-	// Get manifests
-	mfs := manifest.Extract(value)
-	if len(mfs) <= 0 {
-		return errors.New("Could not found any kubernetes manifest")
-	}
-	// Decode them to kubernetes runtime object
-	objs := list.New()
-	// Deploy manifests
-	for _, m := range mfs {
-		obj, err := m.ToObj()
-		if err != nil {
-			return fmt.Errorf("Failed to decode value %s: %w", m, err)
-		}
-		if obj.GetKind() == "Namespace" {
-			objs.PushFront(obj)
-		} else {
-			objs.PushBack(obj)
-		}
-	}
-	return kubernetes.PatchObjects(context.Background(), config, objs)
+	// Deploy Release
+	fmt.Printf("Deploying to %s...\n", r.Host())
+	return r.Deploy(context.Background())
 }
 
 // TODO supports other format (json)

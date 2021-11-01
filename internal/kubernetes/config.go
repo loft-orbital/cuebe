@@ -18,6 +18,7 @@ package kubernetes
 import (
 	"fmt"
 
+	"cuelang.org/go/cue"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -40,4 +41,20 @@ func DefaultConfig(context string) (*rest.Config, error) {
 		return nil, fmt.Errorf("could not get Kubernetes config for context %q: %w", context, err)
 	}
 	return config, nil
+}
+
+func ExtractContext(v cue.Value, path string) (string, error) {
+	p := cue.ParsePath(path)
+	if p.Err() != nil {
+		return "", fmt.Errorf("failed to extract kubernetes context: %w", p.Err())
+	}
+	ktx := v.LookupPath(p)
+	if ktx.Err() != nil {
+		return "", fmt.Errorf("failed to extract kubernetes context: %w", ktx.Err())
+	}
+	sktx, err := ktx.String()
+	if err != nil {
+		return "", fmt.Errorf("failed to extract kubernetes context: %w", err)
+	}
+	return sktx, nil
 }
