@@ -30,6 +30,7 @@ type applyOpts struct {
 	EntryPoints []string
 	InjectFiles []string
 	Dir         string
+	DryRun      bool
 }
 
 func newApplyCmd() *cobra.Command {
@@ -46,6 +47,7 @@ TODO
 	f.StringP("context", "c", "", "Kubernetes context, or a CUE path to extract it from.")
 	f.StringSliceP("inject", "i", []string{}, "Raw YAML files to inject. Can be encrypted with sops.")
 	f.StringP("path", "p", "", "Path to load CUE from. Default to current directory")
+	f.BoolP("dry-run", "", false, "Submit server-side request without persisting the resource.")
 	return cmd
 }
 
@@ -82,6 +84,13 @@ func applyParse(cmd *cobra.Command, args []string) (*applyOpts, error) {
 	}
 	opts.Dir = p
 
+	// DryRun
+	dr, err := cmd.Flags().GetBool("dry-run")
+	if err != nil {
+		return nil, fmt.Errorf("Failed parsing args: %w", err)
+	}
+	opts.DryRun = dr
+
 	opts.EntryPoints = args
 	return opts, nil
 }
@@ -106,5 +115,5 @@ func applyRun(opts *applyOpts) error {
 	}
 	// deploy Release
 	fmt.Printf("Deploying to %s...\n", r.Host())
-	return r.Deploy(context.Background())
+	return r.Deploy(context.Background(), opts.DryRun)
 }
