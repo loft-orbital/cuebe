@@ -16,7 +16,6 @@ limitations under the License.
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -25,62 +24,39 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type applyOpts struct {
-	Context     string
+type exportOpts struct {
 	EntryPoints []string
 	InjectFiles []string
 	Dir         string
-	DryRun      bool
 }
 
-func newApplyCmd() *cobra.Command {
+func newExportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:        "apply",
-		Aliases:    []string{"deploy"},
-		SuggestFor: []string{"install"},
-		Short:      "Apply release to Kubernetes",
-		Long: `Apply CUE release to Kubernetes.
-
-Apply uses server-side apply patch to apply the release.
-For more information about server-side apply see:
-  https://kubernetes.io/docs/reference/using-api/server-side-apply/
-`,
+		Use:        "export",
+		SuggestFor: []string{"render", "template"},
+		Short:      "Export manifests as YAML.",
+		Long:       "Export CUE release as a kubectl-compatible multi document YAML manifest.",
 		Example: `
-# Apply current directory with an encrypted file override
-cuebe apply -i main.enc.yaml
-
-# Extract Kubernetes context from CUE path
-cuebe apply -c path.to.context
-
-# Perform a dry-run (do not persist changes)
-cuebe apply --dry-run
+# Export current directory with an encrypted file override
+cuebe export -i main.enc.yaml
 `,
-		Run: applyCmd,
+		Run: exportCmd,
 	}
 
 	f := cmd.Flags()
-	f.StringP("context", "c", "", "Kubernetes context, or a CUE path to extract it from.")
-	f.StringSliceP("inject", "i", []string{}, "Inject files into the release. Multiple format supported. Decrypt content with Mozilla sops if extension is .enc.*")
+	f.StringSliceP("inject", "i", []string{}, "Raw YAML files to inject. Can be encrypted with sops.")
 	f.StringP("path", "p", "", "Path to load CUE from. Default to current directory")
-	f.BoolP("dry-run", "", false, "Submit server-side request without persisting the resource.")
 	return cmd
 }
 
-func applyCmd(cmd *cobra.Command, args []string) {
-	opts, err := applyParse(cmd, args)
+func exportCmd(cmd *cobra.Command, args []string) {
+	opts, err := exportParse(cmd, args)
 	cobra.CheckErr(err)
-	cobra.CheckErr(applyRun(opts))
+	cobra.CheckErr(exportRun(cmd, opts))
 }
 
-func applyParse(cmd *cobra.Command, args []string) (*applyOpts, error) {
-	opts := &applyOpts{}
-
-	// Context
-	c, err := cmd.Flags().GetString("context")
-	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
-	}
-	opts.Context = c
+func exportParse(cmd *cobra.Command, args []string) (*exportOpts, error) {
+	opts := &exportOpts{}
 
 	// InjectFiles
 	i, err := cmd.Flags().GetStringSlice("inject")
@@ -99,18 +75,11 @@ func applyParse(cmd *cobra.Command, args []string) (*applyOpts, error) {
 	}
 	opts.Dir = p
 
-	// DryRun
-	dr, err := cmd.Flags().GetBool("dry-run")
-	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
-	}
-	opts.DryRun = dr
-
 	opts.EntryPoints = args
 	return opts, nil
 }
 
-func applyRun(opts *applyOpts) error {
+func exportRun(cmd *cobra.Command, opts *exportOpts) error {
 	// load instance
 	u, err := unifier.Load(opts.EntryPoints, opts.Dir)
 	if err != nil {
@@ -124,11 +93,9 @@ func applyRun(opts *applyOpts) error {
 	}
 
 	// build release
-	r, err := kubernetes.NewReleaseFor(u.Unify(), opts.Context, opts.Context)
+	r, err := kubernetes.NewReleaseFor(u.Unify(), "", "")
 	if err != nil {
 		return fmt.Errorf("Failed to buid release: %w", err)
 	}
-	// deploy Release
-	fmt.Printf("Deploying to %s...\n", r.Host())
-	return r.Deploy(context.Background(), opts.DryRun)
+	return r.Render(cmd.OutOrStdout())
 }

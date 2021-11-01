@@ -18,6 +18,7 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"io"
 	"sort"
 
 	"cuelang.org/go/cue"
@@ -30,6 +31,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+	"sigs.k8s.io/yaml"
 )
 
 const fieldManager = "cuebe"
@@ -137,7 +139,24 @@ func (r *Release) Deploy(ctx context.Context, dryrun bool) error {
 	return nil
 }
 
+// Host returns the kubernetes host this release targets.
 func (r *Release) Host() string {
 	return r.cfg.Host
+}
 
+// Render write a kubectl compatible yaml manifest to w.
+func (r *Release) Render(w io.Writer) error {
+	for _, obj := range r.Objects {
+		by, err := yaml.Marshal(&obj)
+		if err != nil {
+			return fmt.Errorf("failed to render release: %w", err)
+		}
+		if _, err := w.Write([]byte("---\n")); err != nil {
+			return fmt.Errorf("failed to render release: %w", err)
+		}
+		if _, err := w.Write(by); err != nil {
+			return fmt.Errorf("failed to render release: %w", err)
+		}
+	}
+	return nil
 }
