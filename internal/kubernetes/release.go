@@ -32,6 +32,8 @@ import (
 	"k8s.io/client-go/restmapper"
 )
 
+const fieldManager = "cuebe"
+
 type Release struct {
 	cfg *rest.Config
 
@@ -71,7 +73,7 @@ func NewReleaseFor(v cue.Value, ktxpath string, ktxfallback string) (*Release, e
 
 // Deploy patches every objects contained in the release to the Kubernetes cluster.
 // It uses server-side apply method.
-func (r *Release) Deploy(ctx context.Context) error {
+func (r *Release) Deploy(ctx context.Context, dryrun bool) error {
 	// Get dynamic client
 	dync, err := dynamic.NewForConfig(r.cfg)
 	if err != nil {
@@ -108,15 +110,19 @@ func (r *Release) Deploy(ctx context.Context) error {
 					return fmt.Errorf("Couldn't marshal %s: %w", printObj(obj), err)
 				}
 
-				// TODO maybe retrieve from option, to enable dryrun
-				po := metav1.PatchOptions{
-					FieldManager: "cuebe",
-				}
 				// Patch object
+				var drSuffix string
+				po := metav1.PatchOptions{
+					FieldManager: fieldManager,
+				}
+				if dryrun {
+					po.DryRun = []string{"All"}
+					drSuffix = " (server dry-run)"
+				}
 				if _, err := dr.Patch(ctx, obj.GetName(), types.ApplyPatchType, data, po); err != nil {
 					return fmt.Errorf("Couldn't patch %s: %w", printObj(obj), err)
 				}
-				fmt.Printf("%s patched\n", printObj(obj))
+				fmt.Printf("%s patched%s\n", printObj(obj), drSuffix)
 			}
 		}
 
