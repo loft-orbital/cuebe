@@ -17,19 +17,12 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
-	"cuelang.org/go/cue"
-	"cuelang.org/go/cue/cuecontext"
-	"cuelang.org/go/cue/load"
-	"cuelang.org/go/pkg/encoding/yaml"
 	"github.com/loft-orbital/cuebe/internal/kubernetes"
+	"github.com/loft-orbital/cuebe/pkg/unifier"
 	"github.com/spf13/cobra"
-	"go.mozilla.org/sops/v3"
-	"go.mozilla.org/sops/v3/decrypt"
 )
 
 type applyOpts struct {
@@ -94,64 +87,24 @@ func applyParse(cmd *cobra.Command, args []string) (*applyOpts, error) {
 }
 
 func applyRun(opts *applyOpts) error {
-	// Get root value
-	ctx := cuecontext.New()
-	bis := load.Instances(opts.EntryPoints, &load.Config{Dir: opts.Dir})
-	if len(bis) <= 0 {
-		return errors.New("Failed to find any instance")
-	}
-	if len(bis) > 1 {
-		fmt.Println("Found multiple instances, using only the first one")
-	}
-	bi := bis[0]
-	if bi.Err != nil {
-		return fmt.Errorf("Error during load: %w", bi.Err)
-	}
-	value := ctx.BuildInstance(bi)
-	if value.Err() != nil {
-		return fmt.Errorf("Failed to build instance: %w", value.Err())
-	}
-	// Merge with raw values
-	var err error
-	value, err = injectRaw(ctx, value, opts.InjectFiles)
+	// load instance
+	u, err := unifier.Load(opts.EntryPoints, opts.Dir)
 	if err != nil {
-		return fmt.Errorf("Failed to inject values: %w", err)
+		return fmt.Errorf("Failed to load instance: %w", err)
+	}
+	// inject orphan files
+	for _, f := range opts.InjectFiles {
+		if err := u.AddFile(f); err != nil {
+			return fmt.Errorf("failed to inject %s: %w", f, err)
+		}
 	}
 
-	// Build release
-	r, err := kubernetes.NewReleaseFor(value, opts.Context, opts.Context)
+	// build release
+	r, err := kubernetes.NewReleaseFor(u.Unify(), opts.Context, opts.Context)
 	if err != nil {
 		return fmt.Errorf("Failed to buid release: %w", err)
 	}
-	// Deploy Release
+	// deploy Release
 	fmt.Printf("Deploying to %s...\n", r.Host())
 	return r.Deploy(context.Background())
-}
-
-// TODO supports other format (json)
-func injectRaw(ctx *cue.Context, v cue.Value, files []string) (cue.Value, error) {
-	for _, f := range files {
-		b, err := decrypt.File(f, "yaml")
-		if err != nil {
-			if !errors.Is(err, sops.MetadataNotFound) {
-				return v, fmt.Errorf("decryption of %s failed: %w", f, err)
-			}
-			fmt.Println(f, "does not seem to be encrypted, using plain value")
-			b, err = ioutil.ReadFile(f)
-			if err != nil {
-				return v, fmt.Errorf("could nor read %s: %w", f, err)
-			}
-		}
-		x, err := yaml.Unmarshal(b)
-		if err != nil {
-			return v, fmt.Errorf("failed to unmarshal %s: %w", f, err)
-		}
-		w := ctx.BuildExpr(x)
-		if w.Err() != nil {
-			return v, fmt.Errorf("failed to build %s: %w", f, err)
-		}
-		v = v.Unify(w)
-	}
-
-	return v, v.Err()
 }
