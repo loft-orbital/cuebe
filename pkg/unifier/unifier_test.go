@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime"
 	"testing"
 
 	"cuelang.org/go/cue"
@@ -96,7 +97,11 @@ func TestAddFile(t *testing.T) {
 	assert.EqualError(t, u.AddFile("file.unsupported"), "failed to add file.unsupported: Unsupported extension .unsupported")
 
 	// Bad file
-	assert.EqualError(t, u.AddFile("file.yaml"), "failed to add file.yaml: open file.yaml: no such file or directory")
+	if runtime.GOOS == "windows" {
+		assert.EqualError(t, u.AddFile("file.yaml"), "failed to add file.yaml: open file.yaml: The system cannot find the file specified.")
+	} else {
+		assert.EqualError(t, u.AddFile("file.yaml"), "failed to add file.yaml: open file.yaml: no such file or directory")
+	}
 
 	// Failed unmarshal
 	f, err := ioutil.TempFile("", "*.json")
