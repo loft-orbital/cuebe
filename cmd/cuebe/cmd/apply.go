@@ -29,6 +29,7 @@ type applyOpts struct {
 	Context     string
 	EntryPoints []string
 	InjectFiles []string
+	Expressions []string
 	Dir         string
 	DryRun      bool
 }
@@ -61,6 +62,7 @@ cuebe apply --dry-run
 	f := cmd.Flags()
 	f.StringP("context", "c", "", "Kubernetes context, or a CUE path to extract it from.")
 	f.StringSliceP("inject", "i", []string{}, "Inject files into the release. Multiple format supported. Decrypt content with Mozilla sops if extension is .enc.*")
+	f.StringSliceP("expression", "e", []string{}, "Expressions to extract manifests from. Extract all manifests by default.")
 	f.StringP("path", "p", "", "Path to load CUE from. Default to current directory")
 	f.BoolP("dry-run", "", false, "Submit server-side request without persisting the resource.")
 	return cmd
@@ -88,6 +90,13 @@ func applyParse(cmd *cobra.Command, args []string) (*applyOpts, error) {
 		return nil, fmt.Errorf("Failed parsing args: %w", err)
 	}
 	opts.InjectFiles = i
+
+	// Expression
+	e, err := cmd.Flags().GetStringSlice("expression")
+	if err != nil {
+		return nil, fmt.Errorf("Failed parsing args: %w", err)
+	}
+	opts.Expressions = e
 
 	// Dir
 	p, err := cmd.Flags().GetString("path")
@@ -124,7 +133,7 @@ func applyRun(opts *applyOpts) error {
 	}
 
 	// build release
-	r, err := kubernetes.NewReleaseFor(u.Unify(), opts.Context, opts.Context)
+	r, err := kubernetes.NewReleaseFor(u.Unify(), opts.Expressions, opts.Context, opts.Context)
 	if err != nil {
 		return fmt.Errorf("Failed to buid release: %w", err)
 	}

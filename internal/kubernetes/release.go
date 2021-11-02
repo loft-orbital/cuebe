@@ -45,10 +45,11 @@ type Release struct {
 
 // Create a new release by extracting manifests and context from a CUE value.
 // If ktxpath fails to resolve to a string, ktxfallback will be used as the Kubernetes context.
-func NewReleaseFor(v cue.Value, ktxpath string, ktxfallback string) (*Release, error) {
+func NewReleaseFor(v cue.Value, expressions []string, ktxpath string, ktxfallback string) (*Release, error) {
 	// Get kubernetes client
 	ktx, err := ExtractContext(v, ktxpath)
 	if err != nil {
+		// TODO fallback if only context is not found, error otherwise
 		ktx = ktxfallback
 	}
 	cfg, err := DefaultConfig(ktx)
@@ -57,7 +58,19 @@ func NewReleaseFor(v cue.Value, ktxpath string, ktxfallback string) (*Release, e
 	}
 
 	// Get manifests
-	mfs := manifest.Extract(v)
+	var mfs []manifest.Manifest
+	if len(expressions) <= 0 {
+		mfs = manifest.Extract(v)
+	} else {
+		for _, e := range expressions {
+			ve := v.LookupPath(cue.ParsePath(e))
+			if ve.Err() != nil {
+				return nil, fmt.Errorf("failed to build release: %w", ve.Err())
+			}
+			mfs = append(mfs, manifest.Extract(ve)...)
+		}
+	}
+
 	objs := make([]unstructured.Unstructured, len(mfs))
 	for i, m := range mfs {
 		objs[i], err = m.ToObj()

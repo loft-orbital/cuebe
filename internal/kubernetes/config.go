@@ -21,6 +21,9 @@ import (
 	"cuelang.org/go/cue"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	// Import every auth client
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 // DefaultConfig returns the kubernetes config and client from default configuration.
