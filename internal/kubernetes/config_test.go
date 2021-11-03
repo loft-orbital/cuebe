@@ -31,21 +31,21 @@ context: fake: 1
 	v := ctx.CompileString(raw)
 
 	// Erroned path
-	ktx, err := ExtractContext(v, "[")
+	ktx, err := ExtractContext(v, "[", "fallback")
 	assert.EqualError(t, err, "failed to extract kubernetes context: expected ']', found 'EOF'")
 	assert.Empty(t, ktx)
 
-	// Path not found
-	ktx, err = ExtractContext(v, "nocontext")
-	assert.EqualError(t, err, "failed to extract kubernetes context: field \"nocontext\" not found")
-	assert.Empty(t, ktx)
-
 	// Not a string path
-	ktx, err = ExtractContext(v, "context.fake")
+	ktx, err = ExtractContext(v, "context.fake", "fallback")
 	assert.EqualError(t, err, "failed to extract kubernetes context: context.fake: cannot use value 1 (type int) as string")
 	assert.Empty(t, ktx)
 
-	ktx, err = ExtractContext(v, "context.real")
+	// Path not found, fallback
+	ktx, err = ExtractContext(v, "nocontext", "fallback")
+	assert.NoError(t, err)
+	assert.Equal(t, "fallback", ktx)
+
+	ktx, err = ExtractContext(v, "context.real", "fallback")
 	assert.NoError(t, err)
 	assert.Equal(t, "my-context", ktx)
 }

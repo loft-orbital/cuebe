@@ -46,13 +46,15 @@ func DefaultConfig(context string) (*rest.Config, error) {
 	return config, nil
 }
 
-func ExtractContext(v cue.Value, path string) (string, error) {
-	p := cue.ParsePath(path)
-	if p.Err() != nil {
-		return "", fmt.Errorf("failed to extract kubernetes context: %w", p.Err())
+func ExtractContext(v cue.Value, path, fallback string) (string, error) {
+	if path == "" {
+		return fallback, nil
 	}
-	ktx := v.LookupPath(p)
+	ktx := v.LookupPath(cue.ParsePath(path))
 	if ktx.Err() != nil {
+		if ktx.Err().Error() == fmt.Sprintf("field \"%s\" not found", path) {
+			return fallback, nil
+		}
 		return "", fmt.Errorf("failed to extract kubernetes context: %w", ktx.Err())
 	}
 	sktx, err := ktx.String()
