@@ -62,7 +62,7 @@ cuebe apply --dry-run
 	f := cmd.Flags()
 	f.StringP("context", "c", "", "Kubernetes context, or a CUE path to extract it from.")
 	f.StringSliceP("inject", "i", []string{}, "Inject files into the release. Multiple format supported. Decrypt content with Mozilla sops if extension is .enc.*")
-	f.StringSliceP("expression", "e", []string{}, "Expressions to extract manifests from. Extract all manifests by default.")
+	f.StringArrayP("expression", "e", []string{}, "Expressions to extract manifests from. Extract all manifests by default.")
 	f.StringP("path", "p", "", "Path to load CUE from. Default to current directory")
 	f.BoolP("dry-run", "", false, "Submit server-side request without persisting the resource.")
 	return cmd
@@ -92,7 +92,7 @@ func applyParse(cmd *cobra.Command, args []string) (*applyOpts, error) {
 	opts.InjectFiles = i
 
 	// Expression
-	e, err := cmd.Flags().GetStringSlice("expression")
+	e, err := cmd.Flags().GetStringArray("expression")
 	if err != nil {
 		return nil, fmt.Errorf("Failed parsing args: %w", err)
 	}
