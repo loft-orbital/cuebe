@@ -46,7 +46,7 @@ cuebe export -i main.enc.yaml
 
 	f := cmd.Flags()
 	f.StringSliceP("inject", "i", []string{}, "Raw YAML files to inject. Can be encrypted with sops.")
-	f.StringSliceP("expression", "e", []string{}, "Expressions to extract manifests from. Extract all manifests by default.")
+	f.StringArrayP("expression", "e", []string{}, "Expressions to extract manifests from. Extract all manifests by default.")
 	f.StringP("path", "p", "", "Path to load CUE from. Default to current directory")
 	return cmd
 }
@@ -68,7 +68,7 @@ func exportParse(cmd *cobra.Command, args []string) (*exportOpts, error) {
 	opts.InjectFiles = i
 
 	// Expression
-	e, err := cmd.Flags().GetStringSlice("expression")
+	e, err := cmd.Flags().GetStringArray("expression")
 	if err != nil {
 		return nil, fmt.Errorf("Failed parsing args: %w", err)
 	}
