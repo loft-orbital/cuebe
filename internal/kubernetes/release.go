@@ -47,10 +47,9 @@ type Release struct {
 // If ktxpath fails to resolve to a string, ktxfallback will be used as the Kubernetes context.
 func NewReleaseFor(v cue.Value, expressions []string, ktxpath string, ktxfallback string) (*Release, error) {
 	// Get kubernetes client
-	ktx, err := ExtractContext(v, ktxpath)
+	ktx, err := ExtractContext(v, ktxpath, ktxfallback)
 	if err != nil {
-		// TODO fallback if only context is not found, error otherwise
-		ktx = ktxfallback
+		return nil, fmt.Errorf("failed to build release: %w", err)
 	}
 	cfg, err := DefaultConfig(ktx)
 	if err != nil {
