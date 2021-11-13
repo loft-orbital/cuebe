@@ -44,6 +44,14 @@ func TestExtractManifestt(t *testing.T) {
 			  }`,
 			count: 2,
 		},
+		"ignore": {
+			input: `{
+			  secret: {kind: "Secret", apiVersion: "v1"}
+			  cm: {kind: "ConfigMap", apiVersion: "v1"}@ignore()
+			  foo: {bar: "baz"}
+			  }`,
+			count: 1,
+		},
 		"complex": {
 			input: `{
 			  root: {kind: "Secret", apiVersion: "v1"}
