@@ -24,6 +24,7 @@ import (
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
+	"cuelang.org/go/cue/load"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,25 +49,25 @@ func TestLoad(t *testing.T) {
 	require.NoError(t, err)
 
 	// Empty entypoints
-	u, err := Load([]string{}, d)
+	u, err := Load([]string{}, &load.Config{Dir: d})
 	require.NoError(t, err)
 	require.Len(t, u.values, 1)
 	b, _ := u.values[0].MarshalJSON()
 	assert.Equal(t, "{\"hello\":\"cuebe\"}", string(b))
 
 	// Cue error (both files)
-	u, err = Load([]string{f2.Name(), f.Name()}, d)
+	u, err = Load([]string{f2.Name(), f.Name()}, &load.Config{Dir: d})
 	assert.EqualError(t, err, "failed to build instances: hello: conflicting values false and \"cuebe\" (mismatched types bool and string)")
 
 	d2, err := ioutil.TempDir("", "cuebetest")
 	require.NoError(t, err)
 	defer os.RemoveAll(d2)
 	// Empty both
-	u, err = Load([]string{}, d2)
+	u, err = Load([]string{}, &load.Config{Dir: d2})
 	assert.EqualError(t, err, "failed to load instances: no CUE files in .")
 
 	// Empty directory
-	u, err = Load([]string{f2.Name()}, "")
+	u, err = Load([]string{f2.Name()}, nil)
 	require.NoError(t, err)
 	require.Len(t, u.values, 1)
 	b, _ = u.values[0].MarshalJSON()
