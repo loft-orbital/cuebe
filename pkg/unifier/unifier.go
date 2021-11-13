@@ -35,11 +35,11 @@ type Unifier struct {
 
 // Load loads instances inside entrypoints, using wd as a working directory.
 // It returns the Unifier containing all the values find.
-func Load(entrypoints []string, wd string) (*Unifier, error) {
+func Load(entrypoints []string, cfg *load.Config) (*Unifier, error) {
 	u := &Unifier{
 		ctx: cuecontext.New(),
 	}
-	bis := load.Instances(entrypoints, &load.Config{Dir: wd})
+	bis := load.Instances(entrypoints, cfg)
 	for _, bi := range bis {
 		if bi.Err != nil {
 			return nil, fmt.Errorf("failed to load instances: %w", bi.Err)

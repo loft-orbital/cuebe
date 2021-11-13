@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 
+	"cuelang.org/go/cue/load"
 	"github.com/loft-orbital/cuebe/internal/kubernetes"
 	"github.com/loft-orbital/cuebe/pkg/unifier"
 	"github.com/spf13/cobra"
@@ -28,6 +29,7 @@ type exportOpts struct {
 	EntryPoints []string
 	InjectFiles []string
 	Expressions []string
+	Tags        []string
 	Dir         string
 }
 
@@ -47,6 +49,7 @@ cuebe export -i main.enc.yaml
 	f := cmd.Flags()
 	f.StringSliceP("inject", "i", []string{}, "Raw YAML files to inject. Can be encrypted with sops.")
 	f.StringArrayP("expression", "e", []string{}, "Expressions to extract manifests from. Extract all manifests by default.")
+	f.StringArrayP("tag", "t", []string{}, "Inject boolean or key=value tag.")
 	f.StringP("path", "p", "", "Path to load CUE from. Default to current directory")
 	return cmd
 }
@@ -74,6 +77,13 @@ func exportParse(cmd *cobra.Command, args []string) (*exportOpts, error) {
 	}
 	opts.Expressions = e
 
+	// Tags
+	t, err := cmd.Flags().GetStringArray("tag")
+	if err != nil {
+		return nil, fmt.Errorf("Failed parsing args: %w", err)
+	}
+	opts.Tags = t
+
 	// Dir
 	p, err := cmd.Flags().GetString("path")
 	if err != nil {
@@ -90,7 +100,10 @@ func exportParse(cmd *cobra.Command, args []string) (*exportOpts, error) {
 
 func exportRun(cmd *cobra.Command, opts *exportOpts) error {
 	// load instance
-	u, err := unifier.Load(opts.EntryPoints, opts.Dir)
+	u, err := unifier.Load(opts.EntryPoints, &load.Config{
+		Dir:  opts.Dir,
+		Tags: opts.Tags,
+	})
 	if err != nil {
 		return fmt.Errorf("Failed to load instance: %w", err)
 	}
