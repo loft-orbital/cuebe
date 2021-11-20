@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 
 	"cuelang.org/go/cue"
@@ -117,6 +118,8 @@ func (r *Release) Deploy(ctx context.Context, dryrun bool) error {
 				dr, err := dynamicResourceInterfaceFor(obj, rm, dync)
 				if err != nil {
 					failed = append(failed, obj) // Couldn't find any mapping, retrying next loop
+					fmt.Fprintf(os.Stderr, "Could not apply %s: %s, retrying later...\n", printObj(obj), err)
+					continue
 				}
 
 				data, err := obj.MarshalJSON()
