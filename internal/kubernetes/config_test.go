@@ -30,10 +30,10 @@ context: fake: 1
 	ctx := cuecontext.New()
 	v := ctx.CompileString(raw)
 
-	// Erroned path
+	// Erroned path, fallback
 	ktx, err := ExtractContext(v, "[", "fallback")
-	assert.EqualError(t, err, "failed to extract kubernetes context: expected ']', found 'EOF'")
-	assert.Empty(t, ktx)
+	assert.NoError(t, err)
+	assert.Equal(t, "fallback", ktx)
 
 	// Not a string path
 	ktx, err = ExtractContext(v, "context.fake", "fallback")

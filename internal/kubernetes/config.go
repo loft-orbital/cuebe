@@ -50,7 +50,11 @@ func ExtractContext(v cue.Value, path, fallback string) (string, error) {
 	if path == "" {
 		return fallback, nil
 	}
-	ktx := v.LookupPath(cue.ParsePath(path))
+	p := cue.ParsePath(path)
+	if p.Err() != nil {
+		return fallback, nil
+	}
+	ktx := v.LookupPath(p)
 	if ktx.Err() != nil {
 		if ktx.Err().Error() == fmt.Sprintf("field \"%s\" not found", path) {
 			return fallback, nil
