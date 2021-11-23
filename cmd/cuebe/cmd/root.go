@@ -18,6 +18,7 @@ package cmd
 import (
 	"os"
 
+	"github.com/loft-orbital/cuebe/cmd/cuebe/cmd/mod"
 	"github.com/spf13/cobra"
 )
 
@@ -47,5 +48,6 @@ func init() {
 		newApplyCmd(),
 		newExportCmd(),
 		newVersionCmd(),
+		mod.RootCmd,
 	)
 }
