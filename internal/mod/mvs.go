@@ -1,3 +1,18 @@
+/*
+Copyright © 2021 Loft Orbital
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package mod
 
 import (
@@ -36,7 +51,7 @@ func New(dir string) (*Module, error) {
 	return &Module{
 		root:    module.Version{Path: mf.Module},
 		storage: fs,
-		reqs:    modreqs{Root: mf.Module, RootReqs: mf.Require},
+		reqs:    ModReqs{Root: mf.Module, RootReqs: mf.Require},
 	}, nil
 }
 
@@ -68,12 +83,16 @@ func (m *Module) Vendor() error {
 	return nil
 }
 
-type modreqs struct {
-	Root     string
+// ModReqs implements the Reqs interface.
+// The Compare function uses semver.Compare.
+type ModReqs struct {
+	// Root module path
+	Root string
+	// Rot module requirements
 	RootReqs []module.Version
 }
 
-func (mr modreqs) Required(m module.Version) ([]module.Version, error) {
+func (mr ModReqs) Required(m module.Version) ([]module.Version, error) {
 	if m.Path == mr.Root {
 		return mr.RootReqs, nil
 	}
@@ -90,6 +109,6 @@ func (mr modreqs) Required(m module.Version) ([]module.Version, error) {
 	return reqs, err
 }
 
-func (mr modreqs) Compare(v, w string) int {
+func (mr ModReqs) Compare(v, w string) int {
 	return semver.Compare(v, w)
 }
