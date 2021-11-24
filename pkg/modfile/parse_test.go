@@ -18,6 +18,7 @@ package modfile
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,10 @@ import (
 )
 
 func TestParse(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping test on windows due to temp dir")
+	}
+
 	filename := filepath.Join(t.TempDir(), "module.cue")
 	// File does not exist
 	_, err := Parse("")
