@@ -34,6 +34,10 @@ bench: $(BUILD_FILES)
 	$(GOTEST) -run=xxx -bench=. ./...
 .PHONY: bench
 
-doc: $(BUILD_FILES)
-		$(GOCMD) doc -all
+doc: $(BUILD_FILES) README.md
+		$(GOCMD) run doc/main.go
 .PHONY: doc
+
+godoc: $(BUILD_FILES)
+		$(GOCMD) doc -all
+.PHONY: godoc
