@@ -62,7 +62,7 @@ func GenGO(root string) (billy.Filesystem, error) {
 	}
 
 	// go mod tidy
-	if err := excmd("go", "mod", "tidy"); err != nil {
+	if err := excmd("go", "mod", "tidy", "-compat=1.17"); err != nil {
 		return nil, fmt.Errorf("failed to run `go mod tidy`: %w", err)
 	}
 
