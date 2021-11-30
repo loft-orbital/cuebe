@@ -29,9 +29,13 @@ type vendorOpts struct {
 func newVendorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vendor",
-		Short: "vendor requirements in cue.mod/pkg",
-		Args:  cobra.MaximumNArgs(1),
-		Run:   vendorCmd,
+		Short: "vendors requirements in cue.mod/pkg",
+		Long: `vendors requirements in cue.mod/pkg directory.
+
+see cue mod help for more details about module requirements.
+`,
+		Args: cobra.MaximumNArgs(1),
+		Run:  vendorCmd,
 	}
 
 	return cmd
