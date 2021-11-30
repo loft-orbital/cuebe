@@ -33,9 +33,24 @@ type genOpts struct {
 func newGenCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gen",
-		Short: "gen requirements in cue.mod/pkg",
-		Args:  cobra.MaximumNArgs(1),
-		Run:   genCmd,
+		Short: "genenerates CUE definitions from Go modules.",
+		Long: `Collects all cuegetgo.go files (including those in cue.mod/pkg/**) and
+generates CUE definitions for all imported packages.
+
+To add a new package to generate definitions for, include it in the import directive of your cuegetgo.go file.
+Use a blank identifier to import the package solely for its side-effects.
+
+~~~go
+package cuegetgo
+
+import (
+  _ "k8s.io/api/apps/v1"
+)
+~~~
+
+`,
+		Args: cobra.MaximumNArgs(1),
+		Run:  genCmd,
 	}
 
 	return cmd
