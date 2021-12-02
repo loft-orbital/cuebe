@@ -132,8 +132,9 @@ func applyParse(cmd *cobra.Command, args []string) (*applyOpts, error) {
 func applyRun(opts *applyOpts) error {
 	// load instance
 	u, err := unifier.Load(opts.EntryPoints, &load.Config{
-		Dir:  opts.Dir,
-		Tags: opts.Tags,
+		Dir:     opts.Dir,
+		Tags:    opts.Tags,
+		TagVars: load.DefaultTagVars(),
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to load instance: %w", err)
