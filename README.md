@@ -24,6 +24,22 @@ cuebe loads a CUE instance and collects every Kubernetes manifests in it.
 It then uses [server-side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/)
 to deploy those resources.
 
+## Install
+
+### Release builds
+
+Download the [latest release](https://github.com/loft-orbital/cuebe/releases/latest) from GitHub.
+
+### Install from Source
+
+You will need [Go 1.17](https://go.dev/doc/install) or later installed.
+
+```shell
+go install github.com/loft-orbital/cuebe/cmd/cuebe@latest
+```
+
+This will install `cuebe` in your `$GOBIN` folder.
+
 ## Concepts
 
 ### Release
