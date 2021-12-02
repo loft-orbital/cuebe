@@ -101,8 +101,9 @@ func exportParse(cmd *cobra.Command, args []string) (*exportOpts, error) {
 func exportRun(cmd *cobra.Command, opts *exportOpts) error {
 	// load instance
 	u, err := unifier.Load(opts.EntryPoints, &load.Config{
-		Dir:  opts.Dir,
-		Tags: opts.Tags,
+		Dir:     opts.Dir,
+		Tags:    opts.Tags,
+		TagVars: load.DefaultTagVars(),
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to load instance: %w", err)
