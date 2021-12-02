@@ -2,6 +2,10 @@
 
 Kubernetes release manager powered by [CUE](https://cuelang.org/).
 
+> 🚧 Disclaimer:
+> This is an alpha version of cuebe.
+> cuebe is not yet ready for production environments.
+
 ## Why?
 
 Writting your Kubernetes manifests in CUE can drastically increase maintainability
