@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,7 +44,7 @@ func TestInject(t *testing.T) {
 
 	b, _ := json.Marshal(Spacecraft{"Voyager", 470, 1})
 	f.Write(b)
-	fi := NewFile(f.Name(), "$.name", "spacecraft.name")
+	fi := NewFile(f.Name(), "$.name", cue.ParsePath("spacecraft.name"))
 	v = fi.Inject(v)
 
 	actual, err := v.MarshalJSON()

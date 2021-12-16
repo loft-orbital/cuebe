@@ -8,7 +8,7 @@ import (
 	"cuelang.org/go/cue"
 	"github.com/PaesslerAG/jsonpath"
 	"github.com/loft-orbital/cuebe/pkg/unifier"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type File struct {
@@ -16,10 +16,10 @@ type File struct {
 	result chan interface{}
 }
 
-func NewFile(src, srcPath, dstPath string) *File {
+func NewFile(src, srcPath string, dstPath cue.Path) *File {
 	r := make(chan interface{}, 1)
 	go parseFile(src, srcPath, r)
-	return &File{path: cue.ParsePath(dstPath), result: r}
+	return &File{path: dstPath, result: r}
 }
 
 func (f *File) Inject(target cue.Value) cue.Value {
@@ -33,7 +33,7 @@ func parseFile(file, jpath string, res chan<- interface{}) {
 	// read
 	b, err := unifier.ReadFile(file)
 	if err != nil {
-		res <- err
+		res <- fmt.Errorf("failed to read %s: %w", file, err)
 		return
 	}
 
