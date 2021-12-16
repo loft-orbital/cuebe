@@ -2,9 +2,10 @@ package release
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"sort"
 
+	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/load"
 	"github.com/loft-orbital/cuebe/pkg/unifier"
 	"golang.org/x/sync/errgroup"
@@ -18,15 +19,26 @@ type Release struct {
 	Objects []unstructured.Unstructured
 }
 
-func Load(entrypoints, orphans []string, cfg *load.Config, ctx context.Context) (*Release, error) {
-	// Load root instance
-	u, err := unifier.Load(entrypoints, cfg)
+type Config struct {
+	*load.Config
+
+	Entrypoints []string
+	Orphans     []string
+	Context     context.Context
+	KubeContext string
+	Target      cue.Path
+}
+
+func Load(cfg *Config) (*Release, error) {
+	// load root instance
+	u, err := unifier.Load(cfg.Entrypoints, cfg.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load instance: %w", err)
 	}
-	// Add oprhan files
-	oeg, _ := errgroup.WithContext(ctx)
-	for _, f := range orphans {
+
+	// add oprhan files
+	oeg, _ := errgroup.WithContext(cfg.Context)
+	for _, f := range cfg.Orphans {
 		oeg.Go(func() error { return u.AddFile(f) })
 	}
 	if err := oeg.Wait(); err != nil {
@@ -37,5 +49,53 @@ func Load(entrypoints, orphans []string, cfg *load.Config, ctx context.Context) 
 		return nil, fmt.Errorf("failed to build release: %w", v.Err())
 	}
 
-	return nil, errors.New("Not implemented")
+	// injection
+	v = Inject(v)
+
+	// check for error
+	if err := v.Validate(); err != nil {
+		return nil, err
+	}
+
+	// get k8s context
+	ktx, err := extractContext(v, cfg.KubeContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract kubernetes context: %w", err)
+	}
+
+	// extract manifests
+	objs, err := Extract(v.LookupPath(cfg.Target))
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract manifests: %w", err)
+	}
+	sort.Sort(SortableUnstructured(objs))
+
+	return &Release{
+		Context: ktx,
+		Objects: objs,
+	}, nil
+}
+
+func extractContext(v cue.Value, c string) (string, error) {
+	if c == "" {
+		return c, nil
+	}
+
+	p := cue.ParsePath(c)
+	if p.Err() != nil {
+		return c, nil
+	}
+
+	vktx := v.LookupPath(p)
+	if vktx.Err() != nil {
+		if vktx.Err().Error() == fmt.Sprintf("field \"%s\" not found", c) {
+			return c, nil
+		}
+		return "", fmt.Errorf("unexpected error: %w", vktx.Err())
+	}
+	sktx, err := vktx.String()
+	if err != nil {
+		return "", fmt.Errorf("context cannot be resolve as a string: %w", err)
+	}
+	return sktx, nil
 }

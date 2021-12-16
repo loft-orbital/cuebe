@@ -16,19 +16,20 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/load"
-	"github.com/loft-orbital/cuebe/internal/kubernetes"
-	"github.com/loft-orbital/cuebe/pkg/unifier"
+	"github.com/loft-orbital/cuebe/pkg/release"
 	"github.com/spf13/cobra"
 )
 
 type exportOpts struct {
 	EntryPoints []string
 	InjectFiles []string
-	Expressions []string
+	Expression  string
 	Tags        []string
 	Dir         string
 }
@@ -48,7 +49,7 @@ cuebe export -i main.enc.yaml
 
 	f := cmd.Flags()
 	f.StringSliceP("inject", "i", []string{}, "Raw YAML files to inject. Can be encrypted with sops.")
-	f.StringArrayP("expression", "e", []string{}, "Expressions to extract manifests from. Extract all manifests by default.")
+	f.StringP("expression", "e", "", "Expressions to extract manifests from. Extract all manifests by default.")
 	f.StringArrayP("tag", "t", []string{}, "Inject boolean or key=value tag.")
 	f.StringP("path", "p", "", "Path to load CUE from. Default to current directory")
 	return cmd
@@ -71,11 +72,11 @@ func exportParse(cmd *cobra.Command, args []string) (*exportOpts, error) {
 	opts.InjectFiles = i
 
 	// Expression
-	e, err := cmd.Flags().GetStringArray("expression")
+	e, err := cmd.Flags().GetString("expression")
 	if err != nil {
 		return nil, fmt.Errorf("Failed parsing args: %w", err)
 	}
-	opts.Expressions = e
+	opts.Expression = e
 
 	// Tags
 	t, err := cmd.Flags().GetStringArray("tag")
@@ -100,25 +101,20 @@ func exportParse(cmd *cobra.Command, args []string) (*exportOpts, error) {
 
 func exportRun(cmd *cobra.Command, opts *exportOpts) error {
 	// load instance
-	u, err := unifier.Load(opts.EntryPoints, &load.Config{
-		Dir:     opts.Dir,
-		Tags:    opts.Tags,
-		TagVars: load.DefaultTagVars(),
+	r, err := release.Load(&release.Config{
+		Config: &load.Config{
+			Dir:     opts.Dir,
+			Tags:    opts.Tags,
+			TagVars: load.DefaultTagVars(),
+		},
+		Entrypoints: opts.EntryPoints,
+		Orphans:     opts.InjectFiles,
+		Context:     context.Background(),
+		Target:      cue.ParsePath(opts.Expression),
 	})
 	if err != nil {
-		return fmt.Errorf("Failed to load instance: %w", err)
-	}
-	// inject orphan files
-	for _, f := range opts.InjectFiles {
-		if err := u.AddFile(f); err != nil {
-			return fmt.Errorf("failed to inject %s: %w", f, err)
-		}
+		return err
 	}
 
-	// build release
-	r, err := kubernetes.NewReleaseFor(u.Unify(), opts.Expressions, "", "")
-	if err != nil {
-		return fmt.Errorf("Failed to buid release: %w", err)
-	}
 	return r.Render(cmd.OutOrStdout())
 }
