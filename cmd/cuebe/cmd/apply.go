@@ -17,12 +17,14 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 
+	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/load"
-	"github.com/loft-orbital/cuebe/internal/kubernetes"
-	"github.com/loft-orbital/cuebe/pkg/unifier"
+	"github.com/loft-orbital/cuebe/pkg/release"
 	"github.com/spf13/cobra"
 )
 
@@ -30,10 +32,11 @@ type applyOpts struct {
 	Context     string
 	EntryPoints []string
 	InjectFiles []string
-	Expressions []string
+	Expression  string
 	Tags        []string
 	Dir         string
 	DryRun      bool
+	Force       bool
 }
 
 func newApplyCmd() *cobra.Command {
@@ -64,10 +67,11 @@ cuebe apply --dry-run
 	f := cmd.Flags()
 	f.StringP("context", "c", "", "Kubernetes context, or a CUE path to extract it from.")
 	f.StringSliceP("inject", "i", []string{}, "Inject files into the release. Multiple format supported. Decrypt content with Mozilla sops if extension is .enc.*")
-	f.StringArrayP("expression", "e", []string{}, "Expressions to extract manifests from. Extract all manifests by default.")
+	f.StringP("expression", "e", "", "Expression to extract manifests from. Extract all manifests by default.")
 	f.StringArrayP("tag", "t", []string{}, "Inject boolean or key=value tag.")
 	f.StringP("path", "p", "", "Path to load CUE from. Default to current directory")
 	f.BoolP("dry-run", "", false, "Submit server-side request without persisting the resource.")
+	f.BoolP("force", "f", false, "Force apply")
 	return cmd
 }
 
@@ -95,11 +99,11 @@ func applyParse(cmd *cobra.Command, args []string) (*applyOpts, error) {
 	opts.InjectFiles = i
 
 	// Expression
-	e, err := cmd.Flags().GetStringArray("expression")
+	e, err := cmd.Flags().GetString("expression")
 	if err != nil {
 		return nil, fmt.Errorf("Failed parsing args: %w", err)
 	}
-	opts.Expressions = e
+	opts.Expression = e
 
 	// Tags
 	t, err := cmd.Flags().GetStringArray("tag")
@@ -125,33 +129,55 @@ func applyParse(cmd *cobra.Command, args []string) (*applyOpts, error) {
 	}
 	opts.DryRun = dr
 
+	// DryRun
+	f, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return nil, fmt.Errorf("Failed parsing args: %w", err)
+	}
+	opts.Force = f
+
 	opts.EntryPoints = args
 	return opts, nil
 }
 
 func applyRun(opts *applyOpts) error {
-	// load instance
-	u, err := unifier.Load(opts.EntryPoints, &load.Config{
-		Dir:     opts.Dir,
-		Tags:    opts.Tags,
-		TagVars: load.DefaultTagVars(),
-	})
-	if err != nil {
-		return fmt.Errorf("Failed to load instance: %w", err)
+	// build config
+	cfg := &release.Config{
+		Config: &load.Config{
+			Dir:     opts.Dir,
+			Tags:    opts.Tags,
+			TagVars: load.DefaultTagVars(),
+		},
+		Entrypoints: opts.EntryPoints,
+		Orphans:     opts.InjectFiles,
+		Context:     context.Background(),
+		Target:      cue.ParsePath(opts.Expression),
+		KubeContext: opts.Context,
 	}
-	// inject orphan files
-	for _, f := range opts.InjectFiles {
-		if err := u.AddFile(f); err != nil {
-			return fmt.Errorf("failed to inject %s: %w", f, err)
+
+	// load instance
+	r, err := release.Load(cfg)
+	if err != nil {
+		return err
+	}
+
+	// ask for confirmation when no k8s context was given
+	if r.Context == "" {
+		var resp string
+		fmt.Print("Deploy on current context? [y/N] ")
+		fmt.Scanln(&resp)
+		resp = strings.ToLower(strings.TrimSpace(resp))
+		if resp != "y" && resp != "yes" {
+			// fmt.Println("Canceled by user")
+			return errors.New("Canceled by user")
 		}
 	}
 
-	// build release
-	r, err := kubernetes.NewReleaseFor(u.Unify(), opts.Expressions, opts.Context, opts.Context)
-	if err != nil {
-		return fmt.Errorf("Failed to buid release: %w", err)
+	// apply changes
+	po := release.DefaultPatchOptions
+	if opts.DryRun {
+		po.DryRun = []string{"All"}
 	}
-	// deploy Release
-	fmt.Printf("Deploying to %s...\n", r.Host())
-	return r.Deploy(context.Background(), opts.DryRun)
+	po.Force = &opts.Force
+	return r.Apply(cfg.Context, po)
 }
