@@ -13,14 +13,17 @@ RUN go mod download \
 
 COPY . .
 
+# Build cuebe
 RUN make build
+
+# go install cuelang
+RUN go install cuelang.org/go/cmd/cue@v0.4.0
 
 ########################################################
 
-FROM golang:1.17-alpine
+FROM google/cloud-sdk:366.0.0-alpine
 
-RUN go install cuelang.org/go/cmd/cue@v0.4.0
-
-COPY --from=build /cuebe/bin/cuebe /go/bin/cuebe
+COPY --from=build /cuebe/bin/cuebe /usr/bin/cuebe
+COPY --from=build /go/bin/cue /usr/bin/cue
 
 ENTRYPOINT ["cuebe"]
