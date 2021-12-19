@@ -33,13 +33,14 @@ cuebe apply --dry-run
 ### Options
 
 ```
-  -c, --context string           Kubernetes context, or a CUE path to extract it from.
-      --dry-run                  Submit server-side request without persisting the resource.
-  -e, --expression stringArray   Expressions to extract manifests from. Extract all manifests by default.
-  -h, --help                     help for apply
-  -i, --inject strings           Inject files into the release. Multiple format supported. Decrypt content with Mozilla sops if extension is .enc.*
-  -p, --path string              Path to load CUE from. Default to current directory
-  -t, --tag stringArray          Inject boolean or key=value tag.
+  -c, --context string      Kubernetes context, or a CUE path to extract it from.
+      --dry-run             Submit server-side request without persisting the resource.
+  -e, --expression string   Expression to extract manifests from. Extract all manifests by default.
+  -f, --force               Force apply
+  -h, --help                help for apply
+  -i, --inject strings      Inject files into the release. Multiple format supported. Decrypt content with Mozilla sops if extension is .enc.*
+  -p, --path string         Path to load CUE from. Default to current directory
+  -t, --tag stringArray     Inject boolean or key=value tag.
 ```
 
 ### SEE ALSO
