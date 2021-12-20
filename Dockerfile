@@ -69,6 +69,7 @@ VOLUME ["/root/.config"]
 
 # Get cuebe bin from the build layer
 COPY --from=build /cuebe/bin/cuebe /usr/bin/cuebe
+COPY --from=build /go/bin/cue /usr/bin/cue
 
 WORKDIR /go
 ENTRYPOINT ["cuebe"]
