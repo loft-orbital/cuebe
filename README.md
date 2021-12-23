@@ -87,7 +87,13 @@ It means cuebe will not dive in this value.
 cuebe will hence ignore every manifest under this value.
 This can speed up the build process, avoiding unnecessary process.
 
-**parameters**: none
+##### Syntax
+
+```
+@ignore()
+```
+
+##### Example
 
 ```cue
 foo: "bar"
@@ -104,18 +110,46 @@ nested: {
 } @ignore()
 ```
 
-### Injection
+### @inject
 
 Although CUE itslef offers a way to [inject value at runtime](https://cuetorials.com/patterns/inject/),
 we found it lacking some features.
 Especially with secrets injection, it can become hard to maintain and scale, and does not fit well in a GitOps flow.
 For that reason we introduced a way to inject values at runtime.
 
-Right now this system is simplistic, it allows to inject one or more files at root level.
-Those files can be plain text or encrypted with [sops](https://github.com/mozilla/sops).
+The `@inject` attribute allows surgical injection of external values in your Cuebe release.
+We recommend using this attribute with parsimony, as `cue` itself will ignore it.
+One of our current usecase is to inject sops encrypted value in our release.
+It allow us to keep a GitOps flow (no runtime config, everything commited) without leaking secrets.
 
-In a near future we will probably introduce a new attribute to tackle this feature in
-a more smarter, more featureful way.
+Cuebe only supports local file injection as for now.
+
+##### Syntax
+
+```cue
+@inject(type=<type>, src=<src> [,path=<path>])
+```
+
+**type**: Injection type. Currerntly only supports `file`
+**src**: Injection source.
+For file injection, the relative path to the file to inject. Supports cue, json or yaml plain or [sops-enccrypted](https://github.com/mozilla/sops) files.
+**path**: [Optional] Path to extract the value from. Default to root.
+
+##### Example
+
+```txtar
+-- injection.yaml --
+namespace:
+  name: potato
+-- main.cue --
+namespace: {
+  apiVersion: "v1"
+  kind:       "Namespace"
+  metadata: {
+    name: string @inject(type=file, src=injection.yaml, path=$.namespace.name)
+  }
+}
+```
 
 ## Examples
 
