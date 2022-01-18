@@ -29,8 +29,20 @@ func TestParseFile(t *testing.T) {
 	res := make(chan interface{})
 	go parseFile(f.Name(), "$.power", res)
 
-	r := <-res
-	assert.Equal(t, float64(470), r)
+	assert.Equal(t, float64(470), <-res)
+
+	// plain
+	f, err = ioutil.TempFile("", "test_inject*.plain")
+	require.NoError(t, err)
+	defer os.Remove(f.Name())
+	defer f.Close()
+
+	f.WriteString("hello cuebe!")
+	res = make(chan interface{})
+	go parseFile(f.Name(), "", res)
+
+	// r = <-res
+	assert.Equal(t, "hello cuebe!", <-res)
 }
 
 func TestInject(t *testing.T) {
