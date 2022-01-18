@@ -79,12 +79,9 @@ func addFileInjector(attr *cue.Attribute, dst cue.Path) injector.Injector {
 		return injector.NewError(errors.New("Missing 'src' key for type file"), dst)
 	}
 
-	p, found, err := attr.Lookup(0, "path")
+	p, _, err := attr.Lookup(0, "path")
 	if err != nil {
 		return injector.NewError(err, dst)
-	}
-	if !found {
-		p = "$"
 	}
 
 	return injector.NewFile(src, p, dst)

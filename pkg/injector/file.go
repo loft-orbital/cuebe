@@ -37,26 +37,31 @@ func parseFile(file, jpath string, res chan<- interface{}) {
 		return
 	}
 
-	// unmarshal
 	var v interface{}
-	switch path.Ext(file) {
-	case ".json":
-		err = json.Unmarshal(b, &v)
-	case ".yaml", ".yml":
-		err = yaml.Unmarshal(b, &v)
-	default:
-		err = fmt.Errorf("Unsupported extension %s", path.Ext(file))
-	}
-	if err != nil {
-		res <- fmt.Errorf("failed to unmarshal: %w", err)
-		return
-	}
 
-	// get path
-	v, err = jsonpath.Get(jpath, v)
-	if err != nil {
-		res <- fmt.Errorf("failed to extract path: %w", err)
-		return
+	if jpath == "" {
+		// plain text injection
+		v = string(b)
+	} else {
+		// structured injection
+		switch path.Ext(file) {
+		case ".json":
+			err = json.Unmarshal(b, &v)
+		case ".yaml", ".yml":
+			err = yaml.Unmarshal(b, &v)
+		default:
+			err = fmt.Errorf("Unsupported extension %s", path.Ext(file))
+		}
+		if err != nil {
+			res <- fmt.Errorf("failed to unmarshal: %w", err)
+			return
+		}
+
+		v, err = jsonpath.Get(jpath, v)
+		if err != nil {
+			res <- fmt.Errorf("failed to extract path: %w", err)
+			return
+		}
 	}
 
 	res <- v

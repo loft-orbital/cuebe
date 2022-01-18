@@ -134,9 +134,12 @@ Cuebe only supports local file injection as for now.
 
 - **src**: Injection source.
 For file injection, the relative path to the file to inject.
-Supports cue, json or yaml plain or [sops-enccrypted](https://github.com/mozilla/sops) files.
+Supports cue, json or yaml plain or [sops-enccrypted](https://github.com/mozilla/sops) structured format,
+or any text file format when injecting unstructured (c.f. path).
 
-- **path**: [Optional] Path to extract the value from. Default to root.
+- **path**: [Optional] Path to extract the value from.
+For file injection, when the path is not provided cuebe treats the file as unstructured.
+It's a plain text injection.
 
 ##### Example
 
@@ -145,6 +148,14 @@ _injection.yaml_
 ```yaml
 namespace:
   name: potato
+```
+
+_plaintext.md_
+
+```md
+# Best sauces
+
+Ketchup Mayo
 ```
 
 _main.cue_
@@ -156,6 +167,17 @@ namespace: {
   metadata: {
     name: string @inject(type=file, src=injection.yaml, path=$.namespace.name)
   }
+}
+
+configmap: {
+	apiVersion: "v1"
+	kind:       "ConfigMap"
+
+	metadata: name: "sauces"
+
+	data: {
+		"README.md": string @inject(src=plaintext.md, type=file)
+	}
 }
 ```
 
