@@ -21,15 +21,18 @@ import (
 	"cuelang.org/go/cue"
 )
 
+// Error represents an injection error.
 type Error struct {
 	path cue.Path
 	err  error
 }
 
+// NewError creates a new error injector.
 func NewError(err error, dstPath cue.Path) *Error {
 	return &Error{path: dstPath, err: fmt.Errorf("injection error: %w", err)}
 }
 
+// Inject injects the error into the target and return the result value.
 func (e *Error) Inject(target cue.Value) cue.Value {
 	return target.FillPath(e.path, e.err)
 }

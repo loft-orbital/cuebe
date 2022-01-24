@@ -26,17 +26,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// File injector uses a local file as source of the inject value.
 type File struct {
 	path   cue.Path
 	result chan interface{}
 }
 
+// NewFile creates a new file injector.
 func NewFile(src, srcPath string, dstPath cue.Path) *File {
 	r := make(chan interface{}, 1)
 	go parseFile(src, srcPath, r)
 	return &File{path: dstPath, result: r}
 }
 
+// Inject returns the target value after injection.
 func (f *File) Inject(target cue.Value) cue.Value {
 	r := <-f.result
 	return target.FillPath(f.path, r)
