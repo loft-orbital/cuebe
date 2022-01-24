@@ -17,6 +17,9 @@ package injector
 
 import "cuelang.org/go/cue"
 
+// Injector represents a way to inject value in a Release
+// from external sources.
 type Injector interface {
+	// Inject returns the target value after injection.
 	Inject(v cue.Value) cue.Value
 }
