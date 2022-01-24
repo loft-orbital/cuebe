@@ -82,12 +82,18 @@ In addition to native attibutes, `cuebe` introduces the following (exhaustive) l
 
 #### @ignore
 
-The `@ignore` attributes mark a value to be ignored by cuebe.
+The `@ignore` attribute marks a value to be ignored by cuebe.
 It means cuebe will not dive in this value.
 cuebe will hence ignore every manifest under this value.
-This can speed up the build process, avoiding unnecessary process.
+This can speed up the build process, avoiding unnecessary recursions.
 
-**parameters**: none
+##### Syntax
+
+```cue
+@ignore()
+```
+
+##### Example
 
 ```cue
 foo: "bar"
@@ -104,18 +110,76 @@ nested: {
 } @ignore()
 ```
 
-### Injection
+### @inject
 
 Although CUE itslef offers a way to [inject value at runtime](https://cuetorials.com/patterns/inject/),
 we found it lacking some features.
-Especially with secrets injection, it can become hard to maintain and scale, and does not fit well in a GitOps flow.
+Especially with secrets injection where it can become hard to maintain and scale, and does not fit well in a GitOps flow.
 For that reason we introduced a way to inject values at runtime.
 
-Right now this system is simplistic, it allows to inject one or more files at root level.
-Those files can be plain text or encrypted with [sops](https://github.com/mozilla/sops).
+The `@inject` attribute allows surgical injection of external values in your Cuebe release.
+We recommend using this attribute with parsimony, as `cue` itself will ignore it.
+One of our current usecase is to inject sops encrypted values in our Releases.
+It allow us to keep a GitOps flow (no runtime config, everything commited) without leaking secrets.
 
-In a near future we will probably introduce a new attribute to tackle this feature in
-a more smarter, more featureful way.
+Cuebe only supports local file injection as for now.
+
+##### Syntax
+
+```cue
+@inject(type=<type>, src=<src> [,path=<path>])
+```
+
+- **type**: Injection type. Currerntly only supports `file`
+
+- **src**: Injection source.
+For file injection, the relative path to the file to inject.
+Supports cue, json or yaml plain or [sops-enccrypted](https://github.com/mozilla/sops) structured format,
+or any text file format when injecting unstructured (c.f. path).
+
+- **path**: [Optional] Path to extract the value from.
+For file injection, when the path is not provided cuebe treats the file as unstructured.
+It's a plain text injection.
+
+##### Example
+
+_injection.yaml_
+
+```yaml
+namespace:
+  name: potato
+```
+
+_plaintext.md_
+
+```md
+# Best sauces
+
+Ketchup Mayo
+```
+
+_main.cue_
+
+```cue
+namespace: {
+  apiVersion: "v1"
+  kind:       "Namespace"
+  metadata: {
+    name: string @inject(type=file, src=injection.yaml, path=$.namespace.name)
+  }
+}
+
+configmap: {
+	apiVersion: "v1"
+	kind:       "ConfigMap"
+
+	metadata: name: "sauces"
+
+	data: {
+		"README.md": string @inject(src=plaintext.md, type=file)
+	}
+}
+```
 
 ## Examples
 
@@ -123,5 +187,5 @@ You will find some examples in the [example folder](https://github.com/loft-orbi
 
 ## Roadmap
 
-- [ ] Better injection system
+- [x] Better injection system
 - [ ] Release lifecycle management
