@@ -23,15 +23,15 @@ import (
 	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/loft-orbital/cuebe/internal/cuegetgo"
 	"github.com/loft-orbital/cuebe/internal/mod"
-	"github.com/spf13/cobra"
+	"github.com/muesli/coral"
 )
 
 type genOpts struct {
 	ModRoot string
 }
 
-func newGenCmd() *cobra.Command {
-	cmd := &cobra.Command{
+func newGenCmd() *coral.Command {
+	cmd := &coral.Command{
 		Use:   "gen",
 		Short: "genenerates CUE definitions from Go modules.",
 		Long: `Collects all cuegetgo.go files (including those in cue.mod/pkg/**) and
@@ -49,20 +49,20 @@ import (
 ~~~
 
 `,
-		Args: cobra.MaximumNArgs(1),
+		Args: coral.MaximumNArgs(1),
 		Run:  genCmd,
 	}
 
 	return cmd
 }
 
-func genCmd(cmd *cobra.Command, args []string) {
+func genCmd(cmd *coral.Command, args []string) {
 	opts, err := genParse(cmd, args)
-	cobra.CheckErr(err)
-	cobra.CheckErr(genRun(opts))
+	coral.CheckErr(err)
+	coral.CheckErr(genRun(opts))
 }
 
-func genParse(cmd *cobra.Command, args []string) (*genOpts, error) {
+func genParse(cmd *coral.Command, args []string) (*genOpts, error) {
 	opts := &genOpts{}
 	if len(args) > 0 {
 		opts.ModRoot = args[0]

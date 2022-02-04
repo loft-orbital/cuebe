@@ -8,7 +8,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.3.1
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/spf13/cobra v1.2.1
+	github.com/muesli/coral v1.0.0
 	github.com/stretchr/testify v1.7.0
 	go.mozilla.org/sops/v3 v3.7.1
 	golang.org/x/mod v0.4.2
@@ -112,6 +112,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect

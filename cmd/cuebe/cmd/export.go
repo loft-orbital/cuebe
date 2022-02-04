@@ -23,7 +23,7 @@ import (
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/load"
 	"github.com/loft-orbital/cuebe/pkg/release"
-	"github.com/spf13/cobra"
+	"github.com/muesli/coral"
 )
 
 type exportOpts struct {
@@ -34,8 +34,8 @@ type exportOpts struct {
 	Dir         string
 }
 
-func newExportCmd() *cobra.Command {
-	cmd := &cobra.Command{
+func newExportCmd() *coral.Command {
+	cmd := &coral.Command{
 		Use:        "export",
 		SuggestFor: []string{"render", "template"},
 		Short:      "Export manifests as YAML.",
@@ -55,13 +55,13 @@ cuebe export -i main.enc.yaml
 	return cmd
 }
 
-func exportCmd(cmd *cobra.Command, args []string) {
+func exportCmd(cmd *coral.Command, args []string) {
 	opts, err := exportParse(cmd, args)
-	cobra.CheckErr(err)
-	cobra.CheckErr(exportRun(cmd, opts))
+	coral.CheckErr(err)
+	coral.CheckErr(exportRun(cmd, opts))
 }
 
-func exportParse(cmd *cobra.Command, args []string) (*exportOpts, error) {
+func exportParse(cmd *coral.Command, args []string) (*exportOpts, error) {
 	opts := &exportOpts{}
 
 	// InjectFiles
@@ -99,7 +99,7 @@ func exportParse(cmd *cobra.Command, args []string) (*exportOpts, error) {
 	return opts, nil
 }
 
-func exportRun(cmd *cobra.Command, opts *exportOpts) error {
+func exportRun(cmd *coral.Command, opts *exportOpts) error {
 	// load instance
 	r, err := release.Load(&release.Config{
 		Config: &load.Config{
