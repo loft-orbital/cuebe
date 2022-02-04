@@ -25,7 +25,7 @@ import (
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/load"
 	"github.com/loft-orbital/cuebe/pkg/release"
-	"github.com/spf13/cobra"
+	"github.com/muesli/coral"
 )
 
 type applyOpts struct {
@@ -39,8 +39,8 @@ type applyOpts struct {
 	Force       bool
 }
 
-func newApplyCmd() *cobra.Command {
-	cmd := &cobra.Command{
+func newApplyCmd() *coral.Command {
+	cmd := &coral.Command{
 		Use:        "apply",
 		Aliases:    []string{"deploy"},
 		SuggestFor: []string{"install"},
@@ -75,13 +75,13 @@ cuebe apply --dry-run
 	return cmd
 }
 
-func applyCmd(cmd *cobra.Command, args []string) {
+func applyCmd(cmd *coral.Command, args []string) {
 	opts, err := applyParse(cmd, args)
-	cobra.CheckErr(err)
-	cobra.CheckErr(applyRun(opts))
+	coral.CheckErr(err)
+	coral.CheckErr(applyRun(opts))
 }
 
-func applyParse(cmd *cobra.Command, args []string) (*applyOpts, error) {
+func applyParse(cmd *coral.Command, args []string) (*applyOpts, error) {
 	opts := &applyOpts{}
 
 	// Context
