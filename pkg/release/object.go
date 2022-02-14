@@ -16,38 +16,80 @@ limitations under the License.
 package release
 
 import (
-	"strings"
+	"context"
+	"fmt"
+	"sync"
 
+	"github.com/hashicorp/go-multierror"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
 )
 
-type SortableUnstructured []unstructured.Unstructured
+const (
+	defaultNamespace = "default"
 
-func (u SortableUnstructured) Len() int { return len(u) }
+	FieldManager = "cuebe"
+)
 
-func (u SortableUnstructured) Less(i, j int) bool {
-	ik := u[i].GetKind()
-	jk := u[j].GetKind()
-	if ik == "Namespace" {
-		return true
-	}
-	if jk == "Namespace" {
-		return false
-	}
+var (
+	DefaultPatchOptions = metav1.PatchOptions{FieldManager: FieldManager}
+)
 
-	if ik == "CustomResourceDefinition" {
-		return true
+// Patch patches an unstructured object.
+func Patch(ctx context.Context, obj unstructured.Unstructured, rm meta.RESTMapper, dc dynamic.Interface, opts metav1.PatchOptions) (*unstructured.Unstructured, error) {
+	// get mapping
+	gvk := obj.GroupVersionKind()
+	mapping, err := rm.RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return nil, fmt.Errorf("Could not get mapping: %w", err)
 	}
-	if jk == "CustomResourceDefinition" {
-		return false
+	// create dynamic resource interface...
+	var dri dynamic.ResourceInterface
+	if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+		// ...for namespaced resources
+		ns := obj.GetNamespace()
+		if ns == "" {
+			ns = defaultNamespace
+		}
+		dri = dc.Resource(mapping.Resource).Namespace(ns)
+	} else {
+		// ...for cluster-wide resources
+		dri = dc.Resource(mapping.Resource)
 	}
-
-	nsc := strings.Compare(u[i].GetNamespace(), u[j].GetNamespace())
-	if nsc != 0 {
-		return nsc < 0
+	// marshal object
+	data, err := obj.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal object: %w", err)
 	}
-
-	return strings.Compare(u[i].GetName(), u[j].GetName()) < 0
+	// do patch
+	return dri.Patch(ctx, obj.GetName(), types.ApplyPatchType, data, opts)
 }
 
-func (u SortableUnstructured) Swap(i, j int) { u[i], u[j] = u[j], u[i] }
+func PatchSlice(ctx context.Context, objs []unstructured.Unstructured, rm meta.RESTMapper, dc dynamic.Interface, opts metav1.PatchOptions) (done, failed []unstructured.Unstructured, err error) {
+	var rerr *multierror.Error
+	var m sync.Mutex
+	var wg sync.WaitGroup
+
+	for _, o := range objs {
+		wg.Add(1)
+		go func(obj unstructured.Unstructured) {
+			defer wg.Done()
+			_, err := Patch(ctx, obj, rm, dc, opts)
+
+			m.Lock()
+			defer m.Unlock()
+			if err != nil {
+				rerr = multierror.Append(rerr, fmt.Errorf("%s patch failed: %w", printObj(obj), err))
+				failed = append(failed, obj)
+			} else {
+				done = append(done, obj)
+			}
+		}(o)
+	}
+	wg.Wait()
+
+	return done, failed, rerr.ErrorOrNil()
+}

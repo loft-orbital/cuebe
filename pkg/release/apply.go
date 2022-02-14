@@ -19,11 +19,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
@@ -31,16 +30,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
-)
-
-const (
-	defaultNamespace = "default"
-
-	FieldManager = "cuebe"
-)
-
-var (
-	DefaultPatchOptions = metav1.PatchOptions{FieldManager: FieldManager}
 )
 
 func (r *Release) Apply(ctx context.Context, po metav1.PatchOptions) error {
@@ -66,49 +55,36 @@ func (r *Release) Apply(ctx context.Context, po metav1.PatchOptions) error {
 
 	todo := make([]unstructured.Unstructured, len(r.Objects))
 	copy(todo, r.Objects)
-	failed := []unstructured.Unstructured{}
-	// Start patching
-	for len(todo) > 0 {
-		rm.Reset() // Invalidate the cache to get new resource mappings
-
-		for _, obj := range todo {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-				dr, err := dynamicResourceInterfaceFor(obj, rm, dync)
-				if err != nil {
-					failed = append(failed, obj) // Couldn't find any mapping, retrying next loop
-					fmt.Printf("Could not apply %s: %s, retrying later...\n", printObj(obj), err)
-					continue
-				}
-
-				data, err := obj.MarshalJSON()
-				if err != nil {
-					return fmt.Errorf("Couldn't marshal %s: %w", printObj(obj), err)
-				}
-
-				// Patch object
-				if _, err := dr.Patch(ctx, obj.GetName(), types.ApplyPatchType, data, po); err != nil {
-					return fmt.Errorf("Couldn't patch %s: %w", printObj(obj), err)
-				}
-				fmt.Printf("%s patched", printObj(obj))
-				if len(po.DryRun) > 0 {
-					fmt.Printf(" (dry-run %s)", po.DryRun)
-				}
-				fmt.Println()
+	for {
+		rm.Reset() // invalidate the cache to get new resource mappings
+		var done []unstructured.Unstructured
+		done, todo, err = PatchSlice(ctx, todo, rm, dync, po)
+		for _, obj := range done {
+			fmt.Printf("%s patched", printObj(obj))
+			if len(po.DryRun) > 0 {
+				fmt.Printf(" (dry-run %s)", po.DryRun)
 			}
+			fmt.Println()
 		}
 
-		// Found a deadlock
-		if len(failed) >= len(todo) {
-			return fmt.Errorf("Failed to patch every objects, %d remaining", len(failed))
+		if len(todo) <= 0 {
+			// finished
+			return err
 		}
-		todo = failed
-		failed = []unstructured.Unstructured{}
+
+		if len(done) <= 0 {
+			// found a deadlock
+			return fmt.Errorf("failed to patch: %w", err)
+		}
+
+		// Wait to retry
+		ticker := time.Tick(time.Second)
+		for i := 5; i >= 0; i-- {
+			<-ticker
+			fmt.Printf("\r%d patch failed, retrying in %d...", len(todo), i)
+		}
+		fmt.Print("\n\n")
 	}
-
-	return nil
 }
 
 // DefaultConfig returns the kubernetes config and client from default configuration.
@@ -129,28 +105,6 @@ func DefaultConfig(context string) (*rest.Config, error) {
 		return nil, fmt.Errorf("could not get Kubernetes config for context %q: %w", context, err)
 	}
 	return config, nil
-}
-
-func dynamicResourceInterfaceFor(obj unstructured.Unstructured, rm *restmapper.DeferredDiscoveryRESTMapper, dc dynamic.Interface) (dynamic.ResourceInterface, error) {
-	// Get mapping
-	gvk := obj.GroupVersionKind()
-	mapping, err := rm.RESTMapping(gvk.GroupKind(), gvk.Version)
-	if err != nil {
-		return nil, err
-	}
-	var dr dynamic.ResourceInterface
-	if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
-		// Namespaced resources
-		ns := obj.GetNamespace()
-		if ns == "" {
-			ns = defaultNamespace
-		}
-		dr = dc.Resource(mapping.Resource).Namespace(ns)
-	} else {
-		// Cluster-wide resources
-		dr = dc.Resource(mapping.Resource)
-	}
-	return dr, nil
 }
 
 func printObj(obj unstructured.Unstructured) string {

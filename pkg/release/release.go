@@ -18,7 +18,6 @@ package release
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/load"
@@ -83,7 +82,6 @@ func Load(cfg *Config) (*Release, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract manifests: %w", err)
 	}
-	sort.Sort(SortableUnstructured(objs))
 
 	return &Release{
 		Context: ktx,
