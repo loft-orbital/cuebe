@@ -27,4 +27,6 @@ type File struct {
 	Module string `json:"module"`
 	// Module requirements.
 	Require []module.Version `json:"require,omitempty"`
+	// Go definition to generate
+	GoDefinitions []string `json:"godef,omitempty"`
 }
