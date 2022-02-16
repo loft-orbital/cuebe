@@ -62,6 +62,11 @@ require: [
 {path: "host.com/spices/salt", version: "v0.1.2"},
 {path: "host.com/lotof/fat/v2", version: "v2.1.5"},
 ]
+
+godef: [
+"host.com/potato/chips",
+"host.com/potato/mashed",
+]
 `)
 	require.NoError(t, err)
 	mf, err = Parse(filename)
@@ -71,8 +76,11 @@ require: [
 		{Path: "host.com/tomato/ketchup", Version: "v1.2.3"},
 		{Path: "host.com/spices/salt", Version: "v0.1.2"},
 		{Path: "host.com/lotof/fat/v2", Version: "v2.1.5"},
-	},
-		mf.Require)
+	}, mf.Require)
+	assert.ElementsMatch(t, []string{
+		"host.com/potato/chips",
+		"host.com/potato/mashed",
+	}, mf.GoDefinitions)
 
 	// build error
 	_, err = f.WriteString(`

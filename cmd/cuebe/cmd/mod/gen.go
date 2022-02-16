@@ -16,13 +16,9 @@ limitations under the License.
 package mod
 
 import (
-	"fmt"
 	"os"
-	"path/filepath"
 
-	"github.com/go-git/go-billy/v5/osfs"
-	"github.com/loft-orbital/cuebe/internal/cuegetgo"
-	"github.com/loft-orbital/cuebe/internal/mod"
+	"github.com/loft-orbital/cuebe/internal/gen"
 	"github.com/muesli/coral"
 )
 
@@ -37,17 +33,17 @@ func newGenCmd() *coral.Command {
 		Long: `Collects all cuegetgo.go files (including those in cue.mod/pkg/**) and
 generates CUE definitions for all imported packages.
 
-To add a new package to generate definitions for, include it in the import directive of your cuegetgo.go file.
-Use a blank identifier to import the package solely for its side-effects.
+To add a new package to generate definitions for, include it in the godef list of your cue.mod/module.cue file.
+You can fix version by appending @version/
 
-~~~go
-package cuegetgo
+~~~cue
+module: "github.com/company/module"
 
-import (
-  _ "k8s.io/api/apps/v1"
-)
+godef: [
+  "k8s.io/api/apps/v1",
+  "k8s.io/api/batch/v1@v0.23.3",
+  ]
 ~~~
-
 `,
 		Args: coral.MaximumNArgs(1),
 		Run:  genCmd,
@@ -77,13 +73,5 @@ func genParse(cmd *coral.Command, args []string) (*genOpts, error) {
 }
 
 func genRun(opts *genOpts) error {
-	mfs, err := cuegetgo.GenGO(opts.ModRoot)
-	if err != nil {
-		return fmt.Errorf("failed to build definitions: %w", err)
-	}
-	gen := osfs.New(filepath.Join(opts.ModRoot, "cue.mod", "gen"))
-	if err := os.RemoveAll(gen.Root()); err != nil {
-		return fmt.Errorf("failed to clean gen directory: %w", err)
-	}
-	return mod.BillyCopy(gen, mfs)
+	return gen.GenGoPkg(opts.ModRoot)
 }
