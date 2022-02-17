@@ -63,18 +63,19 @@ func GenGoPkg(root string) error {
 
 func CollectGoPkg(root string) ([]string, error) {
 	dedupe := make(map[string]void)
+	gendir := path.Join("cue.mod", "gen")
 
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(root, func(dpath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() && strings.HasSuffix(path, "cue.mod/gen") {
+		if d.IsDir() && strings.HasSuffix(dpath, gendir) {
 			// skip gen dir
 			return fs.SkipDir
-		} else if d.Type().IsRegular() && strings.HasSuffix(path, modfile.CueModFile) {
-			mf, err := modfile.Parse(path)
+		} else if d.Type().IsRegular() && strings.HasSuffix(dpath, modfile.CueModFile) {
+			mf, err := modfile.Parse(dpath)
 			if err != nil {
-				return fmt.Errorf("failed to parse %s: %w", path, err)
+				return fmt.Errorf("failed to parse %s: %w", dpath, err)
 			}
 			for _, pkg := range mf.GoDefinitions {
 				dedupe[pkg] = null

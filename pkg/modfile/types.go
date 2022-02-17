@@ -16,11 +16,13 @@ limitations under the License.
 package modfile
 
 import (
+	"path"
+
 	"golang.org/x/mod/module"
 )
 
 // CueModFile is the default location of a CUE module file.
-const CueModFile = "cue.mod/module.cue"
+var CueModFile = path.Join("cue.mod", "module.cue")
 
 type File struct {
 	// Module name, sometime called path.
