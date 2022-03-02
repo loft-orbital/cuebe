@@ -15,12 +15,27 @@ limitations under the License.
 */
 package manifest
 
-import "cuelang.org/go/cue"
+import (
+	"testing"
 
-type Manifest struct {
-	cue.Value
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+)
+
+func TestGetInstance(t *testing.T) {
+	u := new(unstructured.Unstructured)
+	u.SetLabels(map[string]string{
+		InstanceLabel: "my-instance",
+	})
+	m := New(u)
+	assert.Equal(t, "my-instance", m.GetInstance())
 }
 
-func New(v cue.Value) Manifest {
-	return Manifest{v}
+func TestGetDeletionPolicy(t *testing.T) {
+	u := new(unstructured.Unstructured)
+	u.SetAnnotations(map[string]string{
+		DeletionPolicyAnnotation: DeletionPolicyAbandon,
+	})
+	m := New(u)
+	assert.Equal(t, DeletionPolicyAbandon, m.GetDeletionPolicy())
 }
