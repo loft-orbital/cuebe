@@ -15,17 +15,19 @@ limitations under the License.
 */
 package manifest
 
-import (
-	"fmt"
-
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+const (
+	DeletionPolicyAbandon    = "abandon"
+	InstanceLabel            = "cuebe.loft-orbital.com/instance"
+	DeletionPolicyAnnotation = "cuebe.loft-orbital.com/deletion-policy"
 )
 
-// ToObj transform a manifest into an unstructured object.
-func (m Manifest) ToObj() (unstructured.Unstructured, error) {
-	unstruct := unstructured.Unstructured{}
-	if err := m.Decode(&unstruct); err != nil {
-		return unstruct, fmt.Errorf("decoding manifest: %w", err)
-	}
-	return unstruct, nil
+// GetInstance retrieve the instance this Manifest belongs to,
+// or an empty string if not belonging to any instance.
+func (m Manifest) GetInstance() string {
+	return m.GetLabels()[InstanceLabel]
+}
+
+// GetDeletionPolicy returns the deletion policy of this Manifest.
+func (m Manifest) GetDeletionPolicy() string {
+	return m.GetAnnotations()[DeletionPolicyAnnotation]
 }

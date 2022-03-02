@@ -1,0 +1,43 @@
+/*
+Copyright © 2021 Loft Orbital
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+package manifest
+
+import (
+	"fmt"
+
+	"cuelang.org/go/cue"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+)
+
+// Manifest is a wrapper around *unstructured.Unstructured.
+type Manifest struct {
+	*unstructured.Unstructured
+}
+
+// New creates a new Manifest from an *unstructured.Unstructured object.
+func New(u *unstructured.Unstructured) Manifest {
+	return Manifest{u}
+}
+
+// Decode converts a cue.Value into a Manifest
+// or returns an error if the value is not compatible with a k8s object.
+func Decode(v cue.Value) (Manifest, error) {
+	unstruct := new(unstructured.Unstructured)
+	if err := v.Decode(unstruct); err != nil {
+		return Manifest{unstruct}, fmt.Errorf("decoding manifest: %w", err)
+	}
+	return Manifest{unstruct}, nil
+}

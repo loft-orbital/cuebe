@@ -55,11 +55,11 @@ func Extract(v cue.Value) ([]unstructured.Unstructured, error) {
 		// Check if could be a manifest
 		k, vs := v.LookupPath(cue.MakePath(cue.Str("kind"))), v.LookupPath(cue.MakePath(cue.Str("apiVersion")))
 		if k.Kind() == cue.StringKind && vs.Kind() == cue.StringKind {
-			o, err := manifest.New(v).ToObj() // TODO parallelize extraction
+			m, err := manifest.Decode(v) // TODO parallelize extraction
 			if err != nil {
 				errs = multierror.Append(errs, err)
 			} else {
-				objs = append(objs, o)
+				objs = append(objs, *m.Unstructured)
 			}
 			return false
 		}

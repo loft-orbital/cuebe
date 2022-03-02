@@ -16,11 +16,17 @@ limitations under the License.
 package manifest
 
 import (
+	"fmt"
+
 	"cuelang.org/go/cue"
+	"github.com/hashicorp/go-multierror"
 )
 
-// Extract extract kubernetes manifests from a cue.Value
-func Extract(v cue.Value) []Manifest {
+// Extract extracts all Manifests recursively from a cue.Value.
+// Recursion is stopped on `ignore` cue.Attribute or when a Manifest has been decoded.
+// That means nested Manifests are not possible.
+func Extract(v cue.Value) ([]Manifest, error) {
+	var merr *multierror.Error
 	manifests := []Manifest{}
 
 	v.Walk(func(v cue.Value) bool {
@@ -30,11 +36,16 @@ func Extract(v cue.Value) []Manifest {
 
 		k, vs := v.LookupPath(cue.MakePath(cue.Str("kind"))), v.LookupPath(cue.MakePath(cue.Str("apiVersion")))
 		if k.Kind() == cue.StringKind && vs.Kind() == cue.StringKind {
-			manifests = append(manifests, New(v))
+			m, err := Decode(v)
+			if err != nil {
+				merr = multierror.Append(merr, fmt.Errorf("%s: %w", v.Path().String(), err))
+			} else {
+				manifests = append(manifests, m)
+			}
 			return false
 		}
 		return true
 	}, nil)
 
-	return manifests
+	return manifests, merr.ErrorOrNil()
 }
