@@ -17,6 +17,7 @@ package unifier
 
 import (
 	"fmt"
+	"io/fs"
 	"path"
 	"sync"
 
@@ -74,13 +75,13 @@ func (u *Unifier) Unify() cue.Value {
 
 // AddFile parse and compile an orphan file, then add it to the Unifier's values.
 // It plain texti (cue,yaml,json) or sops-encrypted files.
-func (u *Unifier) AddFile(file string) error {
+func (u *Unifier) AddFile(file string, fsys fs.FS) error {
 	um, err := UnmarshallerFor(path.Ext(file))
 	if err != nil {
 		return fmt.Errorf("failed to add %s: %w", file, err)
 	}
 
-	b, err := ReadFile(file)
+	b, err := ReadFile(file, fsys)
 	if err != nil {
 		return fmt.Errorf("failed to add %s: %w", file, err)
 	}

@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 
 	"cuelang.org/go/cue"
@@ -38,11 +39,12 @@ func TestParseFile(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 	defer f.Close()
+	fsys := os.DirFS(path.Dir(f.Name()))
 
 	b, _ := json.Marshal(Spacecraft{"Voyager", 470, 1})
 	f.Write(b)
 	res := make(chan interface{})
-	go parseFile(f.Name(), "$.power", res)
+	go parseFile(path.Base(f.Name()), "$.power", fsys, res)
 
 	assert.Equal(t, float64(470), <-res)
 
@@ -51,10 +53,11 @@ func TestParseFile(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 	defer f.Close()
+	fsys = os.DirFS(path.Dir(f.Name()))
 
 	f.WriteString("hello cuebe!")
 	res = make(chan interface{})
-	go parseFile(f.Name(), "", res)
+	go parseFile(path.Base(f.Name()), "", fsys, res)
 
 	// r = <-res
 	assert.Equal(t, "hello cuebe!", <-res)
@@ -65,13 +68,14 @@ func TestInject(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 	defer f.Close()
+	fsys := os.DirFS(path.Dir(f.Name()))
 
 	ctx := cuecontext.New()
 	v := ctx.CompileString("spacecraft: name: string")
 
 	b, _ := json.Marshal(Spacecraft{"Voyager", 470, 1})
 	f.Write(b)
-	fi := NewFile(f.Name(), "$.name", cue.ParsePath("spacecraft.name"))
+	fi := NewFile(path.Base(f.Name()), "$.name", cue.ParsePath("spacecraft.name"), fsys)
 	v = fi.Inject(v)
 
 	actual, err := v.MarshalJSON()

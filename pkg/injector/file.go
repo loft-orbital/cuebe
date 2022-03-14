@@ -18,6 +18,7 @@ package injector
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"path"
 
 	"cuelang.org/go/cue"
@@ -33,9 +34,9 @@ type File struct {
 }
 
 // NewFile creates a new file injector.
-func NewFile(src, srcPath string, dstPath cue.Path) *File {
+func NewFile(src, srcPath string, dstPath cue.Path, fs fs.FS) *File {
 	r := make(chan interface{}, 1)
-	go parseFile(src, srcPath, r)
+	go parseFile(src, srcPath, fs, r)
 	return &File{path: dstPath, result: r}
 }
 
@@ -45,11 +46,11 @@ func (f *File) Inject(target cue.Value) cue.Value {
 	return target.FillPath(f.path, r)
 }
 
-func parseFile(file, jpath string, res chan<- interface{}) {
+func parseFile(file, jpath string, fs fs.FS, res chan<- interface{}) {
 	defer close(res)
 
 	// read
-	b, err := unifier.ReadFile(file)
+	b, err := unifier.ReadFile(file, fs)
 	if err != nil {
 		res <- fmt.Errorf("failed to read %s: %w", file, err)
 		return
