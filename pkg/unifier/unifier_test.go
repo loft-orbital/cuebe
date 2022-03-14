@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"runtime"
 	"testing"
 
@@ -95,13 +96,13 @@ func TestAddFile(t *testing.T) {
 	u := &Unifier{ctx: cuecontext.New()}
 
 	// Unsupported extension
-	assert.EqualError(t, u.AddFile("file.unsupported"), "failed to add file.unsupported: Unsupported extension .unsupported")
+	assert.EqualError(t, u.AddFile("file.unsupported", nil), "failed to add file.unsupported: Unsupported extension .unsupported")
 
 	// Bad file
 	if runtime.GOOS == "windows" {
-		assert.EqualError(t, u.AddFile("file.yaml"), "failed to add file.yaml: open file.yaml: The system cannot find the file specified.")
+		assert.EqualError(t, u.AddFile("file.yaml", nil), "failed to add file.yaml: could not read file: open /file.yaml: The system cannot find the file specified.")
 	} else {
-		assert.EqualError(t, u.AddFile("file.yaml"), "failed to add file.yaml: open file.yaml: no such file or directory")
+		assert.EqualError(t, u.AddFile("file.yaml", nil), "failed to add file.yaml: could not read file: open /file.yaml: no such file or directory")
 	}
 
 	// Failed unmarshal
@@ -109,14 +110,16 @@ func TestAddFile(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 	_, err = f.WriteString("bad")
-	assert.EqualError(t, u.AddFile(f.Name()), fmt.Sprintf("failed to add %s: failed to unmarshal json: json: invalid JSON", f.Name()))
+	fsys := os.DirFS(path.Dir(f.Name()))
+	assert.EqualError(t, u.AddFile(path.Base(f.Name()), fsys), fmt.Sprintf("failed to add %s: failed to unmarshal json: json: invalid JSON", path.Base(f.Name())))
 
 	// Nominal case
 	f, err = ioutil.TempFile("", "*.cue")
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 	_, err = f.WriteString("foo: true")
-	assert.NoError(t, u.AddFile(f.Name()))
+	fsys = os.DirFS(path.Dir(f.Name()))
+	assert.NoError(t, u.AddFile(path.Base(f.Name()), fsys))
 	require.Len(t, u.values, 1)
 	b, err := u.values[0].MarshalJSON()
 	require.NoError(t, err)

@@ -17,6 +17,7 @@ package release
 
 import (
 	"fmt"
+	"io/fs"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/errors"
@@ -26,12 +27,12 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func Inject(v cue.Value) cue.Value {
+func Inject(v cue.Value, fsys fs.FS) cue.Value {
 	injections := []injector.Injector{}
 	v.Walk(func(v cue.Value) bool {
 		// Check for inject
 		if a := v.Attribute("inject"); a.Err() == nil {
-			injections = append(injections, addInjector(&a, v.Path()))
+			injections = append(injections, addInjector(&a, fsys, v.Path()))
 			return false // no nested injection
 		}
 		return true
@@ -69,7 +70,7 @@ func Extract(v cue.Value) ([]unstructured.Unstructured, error) {
 	return objs, errs
 }
 
-func addInjector(attr *cue.Attribute, dst cue.Path) injector.Injector {
+func addInjector(attr *cue.Attribute, fsys fs.FS, dst cue.Path) injector.Injector {
 	t, found, err := attr.Lookup(0, "type")
 	if err != nil {
 		return injector.NewError(err, dst)
@@ -79,13 +80,13 @@ func addInjector(attr *cue.Attribute, dst cue.Path) injector.Injector {
 	}
 	switch t {
 	case "file":
-		return addFileInjector(attr, dst)
+		return addFileInjector(attr, fsys, dst)
 	default:
 		return injector.NewError(fmt.Errorf("Unsupported injector type %s", t), dst)
 	}
 }
 
-func addFileInjector(attr *cue.Attribute, dst cue.Path) injector.Injector {
+func addFileInjector(attr *cue.Attribute, fsys fs.FS, dst cue.Path) injector.Injector {
 	src, found, err := attr.Lookup(0, "src")
 	if err != nil {
 		return injector.NewError(err, dst)
@@ -99,5 +100,5 @@ func addFileInjector(attr *cue.Attribute, dst cue.Path) injector.Injector {
 		return injector.NewError(err, dst)
 	}
 
-	return injector.NewFile(src, p, dst)
+	return injector.NewFile(src, p, dst, fsys)
 }

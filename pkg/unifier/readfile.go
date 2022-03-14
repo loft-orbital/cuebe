@@ -16,7 +16,9 @@ limitations under the License.
 package unifier
 
 import (
-	"io/ioutil"
+	"fmt"
+	"io/fs"
+	"os"
 	"path"
 	"strings"
 
@@ -25,10 +27,24 @@ import (
 
 // ReadFile reads the file named by filename and returns the contents.
 // If the filename ends by .enc.*, it will be decrypted (Mozilla sops format).
-func ReadFile(filename string) ([]byte, error) {
+func ReadFile(filename string, fsys fs.FS) ([]byte, error) {
+	if fsys == nil {
+		fsys = os.DirFS("")
+	}
+
+	data, err := fs.ReadFile(fsys, filename)
+	if err != nil {
+		return nil, fmt.Errorf("could not read file: %w", err)
+	}
+
+	// encrypted file
 	ext := path.Ext(filename)
 	if strings.HasSuffix(filename, ".enc"+ext) {
-		return decrypt.File(filename, ext)
+		data, err = decrypt.Data(data, ext[1:])
+		if err != nil {
+			return nil, fmt.Errorf("could not decrypt data: %w", err)
+		}
 	}
-	return ioutil.ReadFile(filename)
+
+	return data, nil
 }

@@ -18,6 +18,7 @@ package unifier
 import (
 	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,18 +30,24 @@ func TestReadFile(t *testing.T) {
 	fe, err := ioutil.TempFile("", "*.enc.yaml")
 	require.NoError(t, err)
 	defer os.Remove(fe.Name())
+	fsys := os.DirFS(path.Dir(fe.Name()))
+
 	_, err = fe.WriteString("hello: 1")
 	require.NoError(t, err)
-	_, err = ReadFile(fe.Name())
-	assert.EqualError(t, err, "sops metadata not found")
+
+	_, err = ReadFile(path.Base(fe.Name()), fsys)
+	assert.EqualError(t, err, "could not decrypt data: sops metadata not found")
 
 	// Plain text
 	f, err := ioutil.TempFile("", "*.yaml")
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
+	fsys = os.DirFS(path.Dir(f.Name()))
+
 	_, err = f.WriteString("hello: 1")
 	require.NoError(t, err)
-	b, err := ReadFile(f.Name())
+
+	b, err := ReadFile(path.Base(f.Name()), fsys)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("hello: 1"), b)
 }

@@ -53,7 +53,7 @@ func Load(cfg *Config) (*Release, error) {
 	// add oprhan files
 	oeg, _ := errgroup.WithContext(cfg.Context)
 	for _, f := range cfg.Orphans {
-		oeg.Go(func() error { return u.AddFile(f) })
+		oeg.Go(func() error { return u.AddFile(f, nil) })
 	}
 	if err := oeg.Wait(); err != nil {
 		return nil, fmt.Errorf("failed to add orphans: %w", err)
@@ -64,7 +64,7 @@ func Load(cfg *Config) (*Release, error) {
 	}
 
 	// injection
-	v = Inject(v)
+	v = Inject(v, nil)
 
 	// check for error
 	if err := v.Validate(); err != nil {
