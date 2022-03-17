@@ -41,3 +41,10 @@ func Decode(v cue.Value) (Manifest, error) {
 	}
 	return Manifest{unstruct}, nil
 }
+
+// IsManifest returns true if the cue.Value "looks like" a Manifest.
+// For now that means it has a 'kind' and 'apiVersion', both being strings.
+func IsManifest(v cue.Value) bool {
+	k, vs := v.LookupPath(cue.MakePath(cue.Str("kind"))), v.LookupPath(cue.MakePath(cue.Str("apiVersion")))
+	return k.IncompleteKind() == cue.StringKind && vs.IncompleteKind() == cue.StringKind
+}
