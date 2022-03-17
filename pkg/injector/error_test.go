@@ -16,27 +16,25 @@ limitations under the License.
 package injector
 
 import (
-	"fmt"
+	"errors"
+	"testing"
 
 	"cuelang.org/go/cue"
+	"cuelang.org/go/cue/cuecontext"
+	"github.com/stretchr/testify/assert"
 )
 
-// Error represents an injection error.
-type Error struct {
-	path cue.Path
-	err  error
+func TestNewError(t *testing.T) {
+	e := NewError(errors.New("the error"), cue.ParsePath("."))
+	assert.IsType(t, (*Error)(nil), e)
 }
 
-// NewError creates a new error injector.
-func NewError(err error, dstPath cue.Path) *Error {
-	return &Error{path: dstPath, err: err}
-}
+func TestErrorInject(t *testing.T) {
+	ctx := cuecontext.New()
+	v := ctx.CompileString("foo: _")
+	e := NewError(errors.New("the error"), cue.ParsePath("foo"))
+	assert.NoError(t, v.Err())
 
-// Inject injects the error into the target and return the result value.
-func (e *Error) Inject(target cue.Value) cue.Value {
-	return target.FillPath(e.path, e)
-}
-
-func (e *Error) Error() string {
-	return fmt.Sprintf("injection error: %v", e.err)
+	v = e.Inject(v)
+	assert.EqualError(t, v.Err(), "injection error: the error")
 }
