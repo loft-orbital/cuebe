@@ -20,7 +20,12 @@ func New() *Context {
 // GetFS returns the standard fs.FS underlying filesystem.
 // The returned filesystem is read only.
 func (c *Context) GetFS() iofs.FS {
-	return afero.NewIOFS(afero.NewReadOnlyFs(c.fs))
+	return afero.NewIOFS(c.GetAferoFS())
+}
+
+// GetAferoFS returns the uderlying afero.Fs of this context.
+func (c *Context) GetAferoFS() afero.Fs {
+	return afero.NewReadOnlyFs(c.fs)
 }
 
 // Add copies the content of fs into this Context.
@@ -34,6 +39,9 @@ func Copy(dst, src afero.Fs) error {
 	return afero.Walk(src, "", func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
+		}
+		if path == "" {
+			return nil
 		}
 
 		switch info.Mode() {
