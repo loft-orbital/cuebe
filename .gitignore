@@ -76,4 +76,4 @@ tags
 bin/
 
 dist/
-build
+/build
