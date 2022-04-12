@@ -96,7 +96,7 @@ func TestAddFile(t *testing.T) {
 	u := &Unifier{ctx: cuecontext.New()}
 
 	// Unsupported extension
-	assert.EqualError(t, u.AddFile("file.unsupported", nil), "failed to add file.unsupported: Unsupported extension .unsupported")
+	assert.EqualError(t, u.AddFile("file.unsupported", nil), "failed to add file.unsupported: unsupported extension .unsupported")
 
 	// Bad file
 	if runtime.GOOS == "windows" {
