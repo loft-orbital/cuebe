@@ -31,3 +31,14 @@ func (m Manifest) GetInstance() string {
 func (m Manifest) GetDeletionPolicy() string {
 	return m.GetAnnotations()[DeletionPolicyAnnotation]
 }
+
+// WithInstance sets the manifest instance and returns the modified manifest.
+func (m Manifest) WithInstance(name string) Manifest {
+	labels := m.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[InstanceLabel] = name
+	m.SetLabels(labels)
+	return m
+}

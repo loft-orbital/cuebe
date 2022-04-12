@@ -17,35 +17,72 @@ package manifest
 
 import (
 	"fmt"
+	"log"
+	"sync"
 
 	"cuelang.org/go/cue"
 	"github.com/hashicorp/go-multierror"
 )
 
-// Extract extracts all Manifests recursively from a cue.Value.
+// Extract extracts all Manifests recursively starting from every paths.
 // Recursion is stopped on `ignore` cue.Attribute or when a Manifest has been decoded.
 // That means nested Manifests are not possible.
-func Extract(v cue.Value) ([]Manifest, error) {
-	var merr *multierror.Error
-	manifests := []Manifest{}
+func Extract(v cue.Value, paths ...cue.Path) ([]Manifest, error) {
+	res := make(chan interface{})
+	var wg sync.WaitGroup
 
-	v.Walk(func(v cue.Value) bool {
-		if a := v.Attribute("ignore"); a.Err() == nil {
-			return false
-		}
+	// start from every paths
+	for _, p := range paths {
+		node := v.LookupPath(p)
 
-		k, vs := v.LookupPath(cue.MakePath(cue.Str("kind"))), v.LookupPath(cue.MakePath(cue.Str("apiVersion")))
-		if k.Kind() == cue.StringKind && vs.Kind() == cue.StringKind {
-			m, err := Decode(v)
-			if err != nil {
-				merr = multierror.Append(merr, fmt.Errorf("%s: %w", v.Path().String(), err))
-			} else {
-				manifests = append(manifests, m)
+		// walk value
+		node.Walk(func(v cue.Value) bool {
+			if a := v.Attribute("ignore"); a.Err() == nil {
+				return false // stop diving, we've been told to
 			}
-			return false
-		}
-		return true
-	}, nil)
+			if IsManifest(v) {
+				wg.Add(1)
+				// extract manifest in goroutines
+				go func(m cue.Value) {
+					extract(m, res)
+					wg.Done()
+				}(v)
+				return false // stop diving, we found a manifest
+			}
+			return true // continue deeper in this node
+		}, nil)
 
-	return manifests, merr.ErrorOrNil()
+	}
+
+	// close chan when every extract are done
+	go func() {
+		wg.Wait()
+		close(res)
+	}()
+
+	return collect(res)
+}
+
+func extract(v cue.Value, res chan<- interface{}) {
+	m, err := Decode(v)
+	if err != nil {
+		res <- fmt.Errorf("failed to decode manifest at %s: %w", v.Path(), err)
+		return
+	}
+	res <- m
+}
+
+func collect(res <-chan interface{}) (manifests []Manifest, err error) {
+	for moe := range res {
+		switch v := moe.(type) {
+		case Manifest:
+			manifests = append(manifests, v)
+		case error:
+			err = multierror.Append(err, v)
+		default:
+			log.Panicf("Unexpected manifest type: %T\n", v)
+		}
+	}
+
+	return
 }

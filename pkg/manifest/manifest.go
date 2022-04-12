@@ -16,6 +16,7 @@ limitations under the License.
 package manifest
 
 import (
+	"crypto/sha1"
 	"fmt"
 
 	"cuelang.org/go/cue"
@@ -25,6 +26,17 @@ import (
 // Manifest is a wrapper around *unstructured.Unstructured.
 type Manifest struct {
 	*unstructured.Unstructured
+}
+
+// Hash returns the hash of a Manifest.
+func (m Manifest) Hash() ([]byte, error) {
+	data, err := m.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("could not json marshal: %w", err)
+	}
+	sha := sha1.Sum(data)
+
+	return sha[:], nil
 }
 
 // New creates a new Manifest from an *unstructured.Unstructured object.
@@ -47,4 +59,8 @@ func Decode(v cue.Value) (Manifest, error) {
 func IsManifest(v cue.Value) bool {
 	k, vs := v.LookupPath(cue.MakePath(cue.Str("kind"))), v.LookupPath(cue.MakePath(cue.Str("apiVersion")))
 	return k.IncompleteKind() == cue.StringKind && vs.IncompleteKind() == cue.StringKind
+}
+
+func (m Manifest) IsRemote() bool {
+	return string(m.GetUID()) != ""
 }
