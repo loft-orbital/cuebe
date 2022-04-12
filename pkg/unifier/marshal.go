@@ -38,7 +38,7 @@ func UnmarshallerFor(ext string) (Unmarshaller, error) {
 	case ".yaml", ".yml":
 		return &YAMLUnmarshaller{}, nil
 	default:
-		return nil, fmt.Errorf("Unsupported extension %s", ext)
+		return nil, fmt.Errorf("unsupported extension %s", ext)
 	}
 }
 

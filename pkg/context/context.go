@@ -3,8 +3,8 @@ package context
 import (
 	"fmt"
 	"io"
-	"io/fs"
 	iofs "io/fs"
+	"os"
 
 	"github.com/spf13/afero"
 )
@@ -36,7 +36,7 @@ func (c *Context) Add(fs afero.Fs) error {
 
 // Copy copies src afero.Fs into dst.
 func Copy(dst, src afero.Fs) error {
-	return afero.Walk(src, "", func(path string, info fs.FileInfo, err error) error {
+	return afero.Walk(src, "", func(path string, info iofs.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -44,7 +44,7 @@ func Copy(dst, src afero.Fs) error {
 			return nil
 		}
 
-		switch info.Mode() {
+		switch info.Mode() & os.ModeType {
 		case iofs.ModeDir:
 			if err := dst.MkdirAll(path, info.Mode().Perm()); err != nil {
 				return err
