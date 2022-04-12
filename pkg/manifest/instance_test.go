@@ -39,3 +39,13 @@ func TestGetDeletionPolicy(t *testing.T) {
 	m := New(u)
 	assert.Equal(t, DeletionPolicyAbandon, m.GetDeletionPolicy())
 }
+
+func TestWithInstance(t *testing.T) {
+	u := new(unstructured.Unstructured)
+	m := New(u)
+	m2 := m.WithInstance("potato")
+
+	assert.Equal(t, m, m2)
+	assert.Equal(t, "potato", m.GetInstance())
+	assert.Equal(t, "potato", m2.GetInstance())
+}

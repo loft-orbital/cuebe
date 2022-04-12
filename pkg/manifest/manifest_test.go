@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"crypto/sha1"
 	"testing"
 
 	"cuelang.org/go/cue"
@@ -79,4 +80,14 @@ func TestIsManifest(t *testing.T) {
 			assert.Equal(t, tc.expected, IsManifest(tc.v))
 		})
 	}
+}
+
+func TestManifestHash(t *testing.T) {
+	u := new(unstructured.Unstructured)
+	m := New(u)
+	h, err := m.Hash()
+	assert.NoError(t, err)
+
+	expected := sha1.Sum([]byte("null\n"))
+	assert.Equal(t, expected[:], h)
 }
