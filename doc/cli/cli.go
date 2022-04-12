@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	"github.com/go-git/go-billy/v5"
-	"github.com/muesli/coral"
-	"github.com/muesli/coral/doc"
+	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
 )
 
-func Build(cmd *coral.Command, out billy.Filesystem, siteroot string) error {
+func Build(cmd *cobra.Command, out billy.Filesystem, siteroot string) error {
 	if err := out.MkdirAll("", 0755); err != nil {
 		return fmt.Errorf("could not create command directory: %w", err)
 	}

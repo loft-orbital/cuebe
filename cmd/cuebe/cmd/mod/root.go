@@ -16,13 +16,11 @@ limitations under the License.
 package mod
 
 import (
-	"github.com/muesli/coral"
+	"github.com/spf13/cobra"
 )
 
-var cfgFile string
-
 // RootCmd represents the base command when called without any subcommands
-var RootCmd = &coral.Command{
+var RootCmd = &cobra.Command{
 	Use:   "mod",
 	Short: "manage CUE modules.",
 	Long: `cuebe mod provides access to operations on CUE modules.

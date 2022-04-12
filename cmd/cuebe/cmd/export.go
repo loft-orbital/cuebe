@@ -16,30 +16,37 @@ limitations under the License.
 package cmd
 
 import (
-	"context"
 	"fmt"
+	"io"
 	"os"
+	"path"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/load"
-	"github.com/loft-orbital/cuebe/pkg/release"
-	"github.com/muesli/coral"
+	"github.com/loft-orbital/cuebe/cmd/cuebe/flag"
+	"github.com/loft-orbital/cuebe/pkg/build"
+	bctxt "github.com/loft-orbital/cuebe/pkg/context"
+	"github.com/loft-orbital/cuebe/pkg/manifest"
+	"github.com/spf13/afero"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 type exportOpts struct {
-	EntryPoints []string
-	InjectFiles []string
-	Expression  string
-	Tags        []string
-	Dir         string
+	flag.BuildOpt
+	BuildContext *bctxt.Context
+	OutputDir    string
 }
 
-func newExportCmd() *coral.Command {
-	cmd := &coral.Command{
+func newExportCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:        "export",
 		SuggestFor: []string{"render", "template"},
 		Short:      "Export manifests as YAML.",
-		Long:       "Export CUE release as a kubectl-compatible multi document YAML manifest.",
+		Long: `
+Export CUE release as a kubectl-compatible multi document YAML manifest.
+If --output is set, manifests will be written here, one file by instances.
+		`,
 		Example: `
 # Export current directory with an encrypted file override
 cuebe export -i main.enc.yaml
@@ -48,73 +55,93 @@ cuebe export -i main.enc.yaml
 	}
 
 	f := cmd.Flags()
-	f.StringSliceP("inject", "i", []string{}, "Raw YAML files to inject. Can be encrypted with sops.")
-	f.StringP("expression", "e", "", "Expressions to extract manifests from. Extract all manifests by default.")
-	f.StringArrayP("tag", "t", []string{}, "Inject boolean or key=value tag.")
-	f.StringP("path", "p", "", "Path to load CUE from. Default to current directory")
+	flag.AddBuild(f)
+	f.StringP("output", "o", "", "Directory to write manifests to. If empty it will print into stdout")
 	return cmd
 }
 
-func exportCmd(cmd *coral.Command, args []string) {
+func exportCmd(cmd *cobra.Command, args []string) {
 	opts, err := exportParse(cmd, args)
-	coral.CheckErr(err)
-	coral.CheckErr(exportRun(cmd, opts))
+	cobra.CheckErr(err)
+	cobra.CheckErr(exportRun(cmd, opts))
 }
 
-func exportParse(cmd *coral.Command, args []string) (*exportOpts, error) {
-	opts := &exportOpts{}
+func exportParse(cmd *cobra.Command, args []string) (*exportOpts, error) {
+	opts := new(exportOpts)
 
-	// InjectFiles
-	i, err := cmd.Flags().GetStringSlice("inject")
+	bopts, err := flag.GetBuild(cmd.Flags())
 	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
+		return opts, fmt.Errorf("could not get build options: %w", err)
 	}
-	opts.InjectFiles = i
+	opts.BuildOpt = *bopts
 
-	// Expression
-	e, err := cmd.Flags().GetString("expression")
+	// output
+	output, err := cmd.Flags().GetString("output")
 	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
+		return nil, fmt.Errorf("could not get output flag: %w", err)
 	}
-	opts.Expression = e
+	opts.OutputDir = output
 
-	// Tags
-	t, err := cmd.Flags().GetStringArray("tag")
-	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
+	// context
+	opts.BuildContext = bctxt.New()
+	for _, arg := range args {
+		// TODO move that to a function in the context package
+		if !path.IsAbs(arg) {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return opts, fmt.Errorf("could not get working directory: %w", err)
+			}
+			arg = path.Join(cwd, arg)
+		}
+		if err := opts.BuildContext.Add(afero.NewBasePathFs(afero.NewOsFs(), arg)); err != nil {
+			return opts, fmt.Errorf("could not add %s to context: %w", arg, err)
+		}
 	}
-	opts.Tags = t
 
-	// Dir
-	p, err := cmd.Flags().GetString("path")
-	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
-	}
-	if fileInfo, err := os.Stat(p); p != "" && (os.IsNotExist(err) || !fileInfo.IsDir()) {
-		return nil, fmt.Errorf("%s does not exist or is not a directory", p)
-	}
-	opts.Dir = p
-
-	opts.EntryPoints = args
 	return opts, nil
 }
 
-func exportRun(cmd *coral.Command, opts *exportOpts) error {
-	// load instance
-	r, err := release.Load(&release.Config{
-		Config: &load.Config{
-			Dir:     opts.Dir,
-			Tags:    opts.Tags,
-			TagVars: load.DefaultTagVars(),
-		},
-		Entrypoints: opts.EntryPoints,
-		Orphans:     opts.InjectFiles,
-		Context:     context.Background(),
-		Target:      cue.ParsePath(opts.Expression),
+func exportRun(cmd *cobra.Command, opts *exportOpts) error {
+	// build
+	v, err := build.Build(opts.BuildContext, &load.Config{
+		Tags:    opts.Tags,
+		TagVars: load.DefaultTagVars(),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("could not build context: %w", err)
 	}
 
-	return r.Render(cmd.OutOrStdout())
+	// parse paths
+	paths := make([]cue.Path, 0, len(opts.Expressions))
+	for _, e := range opts.Expressions {
+		p := cue.ParsePath(e)
+		if p.Err() != nil {
+			return fmt.Errorf("could not parse path %s: %w", e, p.Err())
+		}
+		paths = append(paths, p)
+	}
+
+	// extract manifests
+	mfs, err := manifest.Extract(v, paths...)
+	if err != nil {
+		return fmt.Errorf("could not extract manifests: %w", err)
+	}
+	if len(mfs) <= 0 {
+		return fmt.Errorf("could not find any manifests")
+	}
+
+	// render
+	w := cmd.OutOrStdout()
+	encoder := yaml.NewEncoder(w)
+	defer encoder.Close()
+	for _, m := range mfs {
+		if _, err := io.WriteString(w, "---\n"); err != nil {
+			return fmt.Errorf("failed to write %s header: %w", m.GetName(), err)
+		}
+		if err := encoder.Encode(m.Object); err != nil {
+			return fmt.Errorf("failed to marshal %s: %w", m.GetName(), err)
+		}
+	}
+
+	return nil
 }

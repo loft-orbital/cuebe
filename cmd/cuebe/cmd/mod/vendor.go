@@ -19,35 +19,35 @@ import (
 	"fmt"
 
 	"github.com/loft-orbital/cuebe/internal/mod"
-	"github.com/muesli/coral"
+	"github.com/spf13/cobra"
 )
 
 type vendorOpts struct {
 	ModRoot string
 }
 
-func newVendorCmd() *coral.Command {
-	cmd := &coral.Command{
+func newVendorCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "vendor",
 		Short: "vendors requirements in cue.mod/pkg",
 		Long: `vendors requirements in cue.mod/pkg directory.
 
 see cue mod help for more details about module requirements.
 `,
-		Args: coral.MaximumNArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		Run:  vendorCmd,
 	}
 
 	return cmd
 }
 
-func vendorCmd(cmd *coral.Command, args []string) {
+func vendorCmd(cmd *cobra.Command, args []string) {
 	opts, err := vendorParse(cmd, args)
-	coral.CheckErr(err)
-	coral.CheckErr(vendorRun(opts))
+	cobra.CheckErr(err)
+	cobra.CheckErr(vendorRun(opts))
 }
 
-func vendorParse(cmd *coral.Command, args []string) (*vendorOpts, error) {
+func vendorParse(cmd *cobra.Command, args []string) (*vendorOpts, error) {
 	opts := &vendorOpts{}
 	if len(args) > 0 {
 		opts.ModRoot = args[0]

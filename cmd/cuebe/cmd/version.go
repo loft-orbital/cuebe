@@ -21,7 +21,7 @@ import (
 	"runtime"
 	"text/tabwriter"
 
-	"github.com/muesli/coral"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -32,8 +32,8 @@ var (
 
 type versionOpts struct{}
 
-func newVersionCmd() *coral.Command {
-	cmd := &coral.Command{
+func newVersionCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print current version",
 		Run:   versionCmd,
@@ -42,13 +42,13 @@ func newVersionCmd() *coral.Command {
 	return cmd
 }
 
-func versionCmd(cmd *coral.Command, args []string) {
+func versionCmd(cmd *cobra.Command, args []string) {
 	opts, err := versionParse(cmd, args)
-	coral.CheckErr(err)
-	coral.CheckErr(versionRun(opts))
+	cobra.CheckErr(err)
+	cobra.CheckErr(versionRun(opts))
 }
 
-func versionParse(cmd *coral.Command, args []string) (*versionOpts, error) {
+func versionParse(cmd *cobra.Command, args []string) (*versionOpts, error) {
 	opts := &versionOpts{}
 	return opts, nil
 }
