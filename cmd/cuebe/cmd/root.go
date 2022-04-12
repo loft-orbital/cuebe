@@ -19,13 +19,11 @@ import (
 	"os"
 
 	"github.com/loft-orbital/cuebe/cmd/cuebe/cmd/mod"
-	"github.com/muesli/coral"
+	"github.com/spf13/cobra"
 )
 
-var cfgFile string
-
 // RootCmd represents the base command when called without any subcommands
-var RootCmd = &coral.Command{
+var RootCmd = &cobra.Command{
 	Use:   "cuebe",
 	Short: "Handle CUE kubernetes release",
 	Long: `cuebe handles CUE Kubernetes release.

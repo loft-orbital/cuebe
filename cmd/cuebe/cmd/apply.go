@@ -16,31 +16,32 @@ limitations under the License.
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
-	"strings"
+	"path"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/load"
-	"github.com/loft-orbital/cuebe/pkg/release"
-	"github.com/muesli/coral"
+	"github.com/loft-orbital/cuebe/cmd/cuebe/flag"
+	"github.com/loft-orbital/cuebe/internal/utils"
+	"github.com/loft-orbital/cuebe/pkg/build"
+	bctxt "github.com/loft-orbital/cuebe/pkg/context"
+	"github.com/loft-orbital/cuebe/pkg/instance"
+	"github.com/loft-orbital/cuebe/pkg/manifest"
+	"github.com/spf13/afero"
+	"github.com/spf13/cobra"
 )
 
 type applyOpts struct {
-	Context     string
-	EntryPoints []string
-	InjectFiles []string
-	Expression  string
-	Tags        []string
-	Dir         string
-	DryRun      bool
-	Force       bool
+	flag.BuildOpt
+	BuildContext *bctxt.Context
+	DryRun       bool
+	Force        bool
 }
 
-func newApplyCmd() *coral.Command {
-	cmd := &coral.Command{
+func newApplyCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:        "apply",
 		Aliases:    []string{"deploy"},
 		SuggestFor: []string{"install"},
@@ -65,119 +66,116 @@ cuebe apply --dry-run
 	}
 
 	f := cmd.Flags()
-	f.StringP("context", "c", "", "Kubernetes context, or a CUE path to extract it from.")
-	f.StringSliceP("inject", "i", []string{}, "Inject files into the release. Multiple format supported. Decrypt content with Mozilla sops if extension is .enc.*")
-	f.StringP("expression", "e", "", "Expression to extract manifests from. Extract all manifests by default.")
-	f.StringArrayP("tag", "t", []string{}, "Inject boolean or key=value tag.")
-	f.StringP("path", "p", "", "Path to load CUE from. Default to current directory")
+	flag.AddBuild(f)
 	f.BoolP("dry-run", "", false, "Submit server-side request without persisting the resource.")
 	f.BoolP("force", "f", false, "Force apply")
 	return cmd
 }
 
-func applyCmd(cmd *coral.Command, args []string) {
+func applyCmd(cmd *cobra.Command, args []string) {
 	opts, err := applyParse(cmd, args)
-	coral.CheckErr(err)
-	coral.CheckErr(applyRun(opts))
+	cobra.CheckErr(err)
+	cobra.CheckErr(applyRun(cmd, opts))
 }
 
-func applyParse(cmd *coral.Command, args []string) (*applyOpts, error) {
-	opts := &applyOpts{}
+func applyParse(cmd *cobra.Command, args []string) (*applyOpts, error) {
+	opts := new(applyOpts)
 
-	// Context
-	c, err := cmd.Flags().GetString("context")
+	bopts, err := flag.GetBuild(cmd.Flags())
 	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
+		return opts, fmt.Errorf("could not get build options: %w", err)
 	}
-	opts.Context = c
+	opts.BuildOpt = *bopts
 
-	// InjectFiles
-	i, err := cmd.Flags().GetStringSlice("inject")
-	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
-	}
-	opts.InjectFiles = i
-
-	// Expression
-	e, err := cmd.Flags().GetString("expression")
-	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
-	}
-	opts.Expression = e
-
-	// Tags
-	t, err := cmd.Flags().GetStringArray("tag")
-	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
-	}
-	opts.Tags = t
-
-	// Dir
-	p, err := cmd.Flags().GetString("path")
-	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
-	}
-	if fileInfo, err := os.Stat(p); p != "" && (os.IsNotExist(err) || !fileInfo.IsDir()) {
-		return nil, fmt.Errorf("%s does not exist or is not a directory", p)
-	}
-	opts.Dir = p
-
-	// DryRun
+	// dry-run
 	dr, err := cmd.Flags().GetBool("dry-run")
 	if err != nil {
 		return nil, fmt.Errorf("Failed parsing args: %w", err)
 	}
 	opts.DryRun = dr
 
-	// DryRun
+	// force
 	f, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return nil, fmt.Errorf("Failed parsing args: %w", err)
 	}
 	opts.Force = f
 
-	opts.EntryPoints = args
-	return opts, nil
-}
-
-func applyRun(opts *applyOpts) error {
-	// build config
-	cfg := &release.Config{
-		Config: &load.Config{
-			Dir:     opts.Dir,
-			Tags:    opts.Tags,
-			TagVars: load.DefaultTagVars(),
-		},
-		Entrypoints: opts.EntryPoints,
-		Orphans:     opts.InjectFiles,
-		Context:     context.Background(),
-		Target:      cue.ParsePath(opts.Expression),
-		KubeContext: opts.Context,
-	}
-
-	// load instance
-	r, err := release.Load(cfg)
-	if err != nil {
-		return err
-	}
-
-	// ask for confirmation when no k8s context was given
-	if r.Context == "" {
-		var resp string
-		fmt.Print("Deploy on current context? [y/N] ")
-		fmt.Scanln(&resp)
-		resp = strings.ToLower(strings.TrimSpace(resp))
-		if resp != "y" && resp != "yes" {
-			// fmt.Println("Canceled by user")
-			return errors.New("Canceled by user")
+	// context
+	opts.BuildContext = bctxt.New()
+	for _, arg := range args {
+		// TODO move that to a function in the context package
+		if !path.IsAbs(arg) {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return opts, fmt.Errorf("could not get working directory: %w", err)
+			}
+			arg = path.Join(cwd, arg)
+		}
+		if err := opts.BuildContext.Add(afero.NewBasePathFs(afero.NewOsFs(), arg)); err != nil {
+			return opts, fmt.Errorf("could not add %s to context: %w", arg, err)
 		}
 	}
 
+	return opts, nil
+}
+
+func applyRun(cmd *cobra.Command, opts *applyOpts) error {
+	// build
+	v, err := build.Build(opts.BuildContext, &load.Config{
+		Tags:    opts.Tags,
+		TagVars: load.DefaultTagVars(),
+	})
+	if err != nil {
+		return fmt.Errorf("could not build context: %w", err)
+	}
+
+	// parse paths
+	paths := make([]cue.Path, 0, len(opts.Expressions))
+	for _, e := range opts.Expressions {
+		p := cue.ParsePath(e)
+		if p.Err() != nil {
+			return fmt.Errorf("could not parse path %s: %w", e, p.Err())
+		}
+		paths = append(paths, p)
+	}
+
+	// extract manifests
+	mfs, err := manifest.Extract(v, paths...)
+	if err != nil {
+		return fmt.Errorf("could not extract manifests: %w", err)
+	}
+	if len(mfs) <= 0 {
+		return errors.New("could not find any manifests")
+	}
+
+	// group by Instances
+	instances := instance.Split(mfs)
+
+	// get kube config
+	// TODO retrieve from args + build
+	rconfig, err := utils.DefaultConfig("")
+	if err != nil {
+		return fmt.Errorf("could not get default k8s config: %w", err)
+	}
+	konfig, err := utils.NewK8sConfig(rconfig)
+	if err != nil {
+		return fmt.Errorf("could not get cluster configuration: %w", err)
+	}
+
 	// apply changes
-	po := release.DefaultPatchOptions
+	po := utils.CommonMetaOptions{
+		FieldManager: "cuebe",
+		Force:        &opts.Force,
+	}
 	if opts.DryRun {
 		po.DryRun = []string{"All"}
 	}
-	po.Force = &opts.Force
-	return r.Apply(cfg.Context, po)
+	for _, i := range instances {
+		if err := i.Commit(cmd.Context(), konfig, po); err != nil {
+			return fmt.Errorf("could not commit instance %s: %w", i, err)
+		}
+	}
+
+	return nil
 }
