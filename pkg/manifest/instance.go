@@ -42,3 +42,14 @@ func (m Manifest) WithInstance(name string) Manifest {
 	m.SetLabels(labels)
 	return m
 }
+
+// WithDeletionPolicy sets the manifest deletion policy and returns the modified manifest.
+func (m Manifest) WithDeletionPolicy(policy string) Manifest {
+	annotations := m.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	annotations[DeletionPolicyAnnotation] = policy
+	m.SetAnnotations(annotations)
+	return m
+}

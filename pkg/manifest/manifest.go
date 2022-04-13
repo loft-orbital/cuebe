@@ -61,6 +61,8 @@ func IsManifest(v cue.Value) bool {
 	return k.IncompleteKind() == cue.StringKind && vs.IncompleteKind() == cue.StringKind
 }
 
+// IsRemote returns true if the manifest has an uuid set.
+// TODO: this is weak, get rid of using that asap.
 func (m Manifest) IsRemote() bool {
 	return string(m.GetUID()) != ""
 }
