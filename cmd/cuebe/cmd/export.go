@@ -33,7 +33,7 @@ import (
 )
 
 type exportOpts struct {
-	flag.BuildOpt
+	*flag.BuildOpt
 	BuildContext *bctxt.Context
 	OutputDir    string
 }
@@ -66,21 +66,19 @@ func exportCmd(cmd *cobra.Command, args []string) {
 	cobra.CheckErr(exportRun(cmd, opts))
 }
 
-func exportParse(cmd *cobra.Command, args []string) (*exportOpts, error) {
-	opts := new(exportOpts)
+func exportParse(cmd *cobra.Command, args []string) (opts *exportOpts, err error) {
+	opts = new(exportOpts)
 
-	bopts, err := flag.GetBuild(cmd.Flags())
+	opts.BuildOpt, err = flag.GetBuild(cmd.Flags())
 	if err != nil {
-		return opts, fmt.Errorf("could not get build options: %w", err)
+		return nil, fmt.Errorf("could not get build options: %w", err)
 	}
-	opts.BuildOpt = *bopts
 
 	// output
-	output, err := cmd.Flags().GetString("output")
+	opts.OutputDir, err = cmd.Flags().GetString("output")
 	if err != nil {
 		return nil, fmt.Errorf("could not get output flag: %w", err)
 	}
-	opts.OutputDir = output
 
 	// context
 	opts.BuildContext = bctxt.New()

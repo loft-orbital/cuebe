@@ -34,7 +34,7 @@ import (
 )
 
 type applyOpts struct {
-	flag.BuildOpt
+	*flag.BuildOpt
 	BuildContext *bctxt.Context
 	DryRun       bool
 	Force        bool
@@ -78,28 +78,26 @@ func applyCmd(cmd *cobra.Command, args []string) {
 	cobra.CheckErr(applyRun(cmd, opts))
 }
 
-func applyParse(cmd *cobra.Command, args []string) (*applyOpts, error) {
-	opts := new(applyOpts)
+func applyParse(cmd *cobra.Command, args []string) (opts *applyOpts, err error) {
+	opts = new(applyOpts)
 
-	bopts, err := flag.GetBuild(cmd.Flags())
+	// build options
+	opts.BuildOpt, err = flag.GetBuild(cmd.Flags())
 	if err != nil {
 		return opts, fmt.Errorf("could not get build options: %w", err)
 	}
-	opts.BuildOpt = *bopts
 
 	// dry-run
-	dr, err := cmd.Flags().GetBool("dry-run")
+	opts.DryRun, err = cmd.Flags().GetBool("dry-run")
 	if err != nil {
 		return nil, fmt.Errorf("Failed parsing args: %w", err)
 	}
-	opts.DryRun = dr
 
 	// force
-	f, err := cmd.Flags().GetBool("force")
+	opts.Force, err = cmd.Flags().GetBool("force")
 	if err != nil {
 		return nil, fmt.Errorf("Failed parsing args: %w", err)
 	}
-	opts.Force = f
 
 	// context
 	opts.BuildContext = bctxt.New()
