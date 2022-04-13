@@ -1,13 +1,16 @@
-package manifest
+package manifest_test
 
 import (
 	"crypto/sha1"
+	"math"
 	"testing"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	. "github.com/loft-orbital/cuebe/pkg/manifest"
 )
 
 const testManifestNominal = `
@@ -90,4 +93,16 @@ func TestManifestHash(t *testing.T) {
 
 	expected := sha1.Sum([]byte("null\n"))
 	assert.Equal(t, expected[:], h)
+
+	// test error
+	m.SetUnstructuredContent(map[string]interface{}{"foo": math.NaN()})
+	h, err = m.Hash()
+	assert.Error(t, err)
+}
+
+func TestManifestIsRemote(t *testing.T) {
+	m := NewUnique()
+	assert.False(t, m.IsRemote())
+	m.SetUID("foo")
+	assert.True(t, m.IsRemote())
 }

@@ -99,6 +99,11 @@ func TestCollect(t *testing.T) {
 	assert.Len(t, mfs, 3)
 	assert.ErrorAs(t, err, &err1)
 	assert.ErrorAs(t, err, &err2)
+
+	// panic
+	res = make(chan interface{}, 1)
+	res <- 1
+	assert.Panics(t, func() { collect(res) })
 }
 
 func BenchmarkExtractManifest(b *testing.B) {
