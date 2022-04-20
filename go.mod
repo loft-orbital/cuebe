@@ -9,7 +9,7 @@ require (
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/spf13/afero v1.8.1
-	github.com/spf13/cobra v1.4.0
+	github.com/spf13/cobra v1.4.1-0.20220414043027-bf6cb5804d7a
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	go.mozilla.org/sops/v3 v3.7.1
