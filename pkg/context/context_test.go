@@ -22,7 +22,7 @@ func TestCopyFile(t *testing.T) {
 	dst := afero.NewMemMapFs()
 	require.NoError(t, afero.WriteFile(src, filename, payload, 0666))
 
-	written, err := CopyFile(dst, src, filename)
+	written, err := CopyFile(dst, src, filename, 0666)
 	assert.NoError(t, err)
 	assert.Equal(t, len(payload), int(written))
 
@@ -30,7 +30,7 @@ func TestCopyFile(t *testing.T) {
 	payload = []byte("!ebeuc olleH")
 	require.NoError(t, afero.WriteFile(src, filename, payload, 0666))
 
-	written, err = CopyFile(dst, src, filename)
+	written, err = CopyFile(dst, src, filename, 0666)
 	assert.NoError(t, err)
 	actual, err := afero.ReadFile(dst, filename)
 	assert.NoError(t, err)

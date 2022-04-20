@@ -5,6 +5,7 @@ import (
 	"io"
 	iofs "io/fs"
 	"os"
+	"path"
 
 	"github.com/spf13/afero"
 )
@@ -15,6 +16,25 @@ type Context struct {
 
 func New() *Context {
 	return &Context{fs: afero.NewMemMapFs()}
+}
+
+func FromArgs(args []string) (*Context, error) {
+	ctx := New()
+
+	for _, arg := range args {
+		if !path.IsAbs(arg) {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return nil, fmt.Errorf("could not get working directory: %w", err)
+			}
+			arg = path.Join(cwd, arg)
+		}
+		if err := ctx.Add(afero.NewBasePathFs(afero.NewOsFs(), arg)); err != nil {
+			return nil, fmt.Errorf("could not add %s to context: %w", arg, err)
+		}
+	}
+
+	return ctx, nil
 }
 
 // GetFS returns the standard fs.FS underlying filesystem.
@@ -50,7 +70,7 @@ func Copy(dst, src afero.Fs) error {
 				return err
 			}
 		default:
-			_, err := CopyFile(dst, src, path)
+			_, err := CopyFile(dst, src, path, info.Mode())
 			if err != nil {
 				return fmt.Errorf("failed to copy %s: %w", path, err)
 			}
@@ -61,14 +81,14 @@ func Copy(dst, src afero.Fs) error {
 }
 
 // CopyFile copy a file from src to dst, keeping the same file name and path.
-func CopyFile(dst, src afero.Fs, name string) (int64, error) {
+func CopyFile(dst, src afero.Fs, name string, stat iofs.FileMode) (int64, error) {
 	srcF, err := src.Open(name)
 	if err != nil {
 		return 0, fmt.Errorf("could not open file: %w", err)
 	}
 	defer srcF.Close()
 
-	dstF, err := dst.Create(name)
+	dstF, err := dst.OpenFile(name, os.O_RDWR|os.O_CREATE, stat)
 	if err != nil {
 		return 0, fmt.Errorf("could not create file: %w", err)
 	}

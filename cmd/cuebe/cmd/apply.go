@@ -16,116 +16,108 @@ limitations under the License.
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	"os"
-	"path"
+	"strings"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/load"
-	"github.com/loft-orbital/cuebe/cmd/cuebe/flag"
+	"github.com/loft-orbital/cuebe/cmd/cuebe/factory"
+	"github.com/loft-orbital/cuebe/cmd/cuebe/prompt"
 	"github.com/loft-orbital/cuebe/internal/utils"
 	"github.com/loft-orbital/cuebe/pkg/build"
-	bctxt "github.com/loft-orbital/cuebe/pkg/context"
 	"github.com/loft-orbital/cuebe/pkg/instance"
 	"github.com/loft-orbital/cuebe/pkg/manifest"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
-
-type applyOpts struct {
-	*flag.BuildOpt
-	BuildContext *bctxt.Context
-	DryRun       bool
-	Force        bool
-}
 
 func newApplyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "apply",
 		Aliases:    []string{"deploy"},
 		SuggestFor: []string{"install"},
-		Short:      "Apply release to Kubernetes",
-		Long: `Apply CUE release to Kubernetes.
+		Short:      "Apply context to k8s cluster.",
+		Long: `Apply context to k8s cluster.
 
-Apply uses server-side apply patch to apply the release.
+Apply uses server-side apply patch to apply the context.
 For more information about server-side apply see:
   https://kubernetes.io/docs/reference/using-api/server-side-apply/
+
+It applies every manifests found in the provided context,
+grouping them by instance if necessary.
 `,
 		Example: `
 # Apply current directory with an encrypted file override
-cuebe apply -i main.enc.yaml
+cuebe apply . main.enc.yaml
 
-# Extract Kubernetes context from CUE path
-cuebe apply -c path.to.context
+# Extract Kubernetes context from <Build>.path.to.context
+cuebe apply -c $path.to.context .
 
 # Perform a dry-run (do not persist changes)
-cuebe apply --dry-run
+cuebe apply --dry-run .
 `,
-		Run: applyCmd,
+		Run: runApply,
 	}
 
+	factory.MetaOptionsAware(cmd)
+	factory.BuildAware(cmd)
+	factory.BuildContextAware(cmd)
+
 	f := cmd.Flags()
-	flag.AddBuild(f)
-	f.BoolP("dry-run", "", false, "Submit server-side request without persisting the resource.")
-	f.BoolP("force", "f", false, "Force apply")
+	f.StringP("cluster", "c", "", "Cluster context. If starting with a $, it will be extracted at this path.")
 	return cmd
 }
 
-func applyCmd(cmd *cobra.Command, args []string) {
-	opts, err := applyParse(cmd, args)
+func runApply(cmd *cobra.Command, args []string) {
+	mfs, build, err := manifetsFrom(cmd)
 	cobra.CheckErr(err)
-	cobra.CheckErr(applyRun(cmd, opts))
+
+	// group by Instances
+	instances := instance.Split(mfs)
+
+	// get kube config
+	ctx, err := cmd.Flags().GetString("cluster")
+	if strings.HasPrefix(ctx, "$") {
+		path := cue.ParsePath(strings.TrimLeft(ctx, "$"))
+		cobra.CheckErr(path.Err())
+		ctx, err = build.LookupPath(path).String()
+		cobra.CheckErr(err)
+	}
+	if ctx == "" && !prompt.YesNo("Deploy on current context?", cmd.InOrStdin(), cmd.OutOrStdout()) {
+		cobra.CheckErr("Canceled by user")
+	}
+	konfig, err := getK8sConfig(ctx)
+	cobra.CheckErr(err)
+
+	// apply changes
+	for _, i := range instances {
+		cobra.CheckErr(i.Commit(cmd.Context(), konfig, factory.GetMetaOptions(cmd)))
+	}
 }
 
-func applyParse(cmd *cobra.Command, args []string) (opts *applyOpts, err error) {
-	opts = new(applyOpts)
-
-	// build options
-	opts.BuildOpt, err = flag.GetBuild(cmd.Flags())
+func getK8sConfig(context string) (*utils.K8sConfig, error) {
+	rconfig, err := utils.DefaultConfig(context)
 	if err != nil {
-		return opts, fmt.Errorf("could not get build options: %w", err)
+		return nil, fmt.Errorf("could not get config for '%s': %w", context, err)
 	}
-
-	// dry-run
-	opts.DryRun, err = cmd.Flags().GetBool("dry-run")
+	konfig, err := utils.NewK8sConfig(rconfig)
 	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
+		return nil, fmt.Errorf("could not get cluster configuration: %w", err)
 	}
 
-	// force
-	opts.Force, err = cmd.Flags().GetBool("force")
-	if err != nil {
-		return nil, fmt.Errorf("Failed parsing args: %w", err)
-	}
-
-	// context
-	opts.BuildContext = bctxt.New()
-	for _, arg := range args {
-		// TODO move that to a function in the context package
-		if !path.IsAbs(arg) {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return opts, fmt.Errorf("could not get working directory: %w", err)
-			}
-			arg = path.Join(cwd, arg)
-		}
-		if err := opts.BuildContext.Add(afero.NewBasePathFs(afero.NewOsFs(), arg)); err != nil {
-			return opts, fmt.Errorf("could not add %s to context: %w", arg, err)
-		}
-	}
-
-	return opts, nil
+	return konfig, nil
 }
 
-func applyRun(cmd *cobra.Command, opts *applyOpts) error {
+// TODO move that in its own package
+func manifetsFrom(cmd *cobra.Command) ([]manifest.Manifest, cue.Value, error) {
+	opts := factory.GetBuildOpt(cmd)
+
 	// build
-	v, err := build.Build(opts.BuildContext, &load.Config{
+	v, err := build.Build(factory.GetBuildContext(cmd), &load.Config{
 		Tags:    opts.Tags,
 		TagVars: load.DefaultTagVars(),
 	})
 	if err != nil {
-		return fmt.Errorf("could not build context: %w", err)
+		return nil, cue.Value{}, fmt.Errorf("could not build context: %w", err)
 	}
 
 	// parse paths
@@ -133,7 +125,7 @@ func applyRun(cmd *cobra.Command, opts *applyOpts) error {
 	for _, e := range opts.Expressions {
 		p := cue.ParsePath(e)
 		if p.Err() != nil {
-			return fmt.Errorf("could not parse path %s: %w", e, p.Err())
+			return nil, v, fmt.Errorf("failed to parse expression %s: %w", e, p.Err())
 		}
 		paths = append(paths, p)
 	}
@@ -141,39 +133,11 @@ func applyRun(cmd *cobra.Command, opts *applyOpts) error {
 	// extract manifests
 	mfs, err := manifest.Extract(v, paths...)
 	if err != nil {
-		return fmt.Errorf("could not extract manifests: %w", err)
+		return nil, v, fmt.Errorf("failed to extract manifests: %w", err)
 	}
 	if len(mfs) <= 0 {
-		return errors.New("could not find any manifests")
+		return nil, v, fmt.Errorf("no manifest found")
 	}
 
-	// group by Instances
-	instances := instance.Split(mfs)
-
-	// get kube config
-	// TODO retrieve from args + build
-	rconfig, err := utils.DefaultConfig("")
-	if err != nil {
-		return fmt.Errorf("could not get default k8s config: %w", err)
-	}
-	konfig, err := utils.NewK8sConfig(rconfig)
-	if err != nil {
-		return fmt.Errorf("could not get cluster configuration: %w", err)
-	}
-
-	// apply changes
-	po := utils.CommonMetaOptions{
-		FieldManager: "cuebe",
-		Force:        &opts.Force,
-	}
-	if opts.DryRun {
-		po.DryRun = []string{"All"}
-	}
-	for _, i := range instances {
-		if err := i.Commit(cmd.Context(), konfig, po); err != nil {
-			return fmt.Errorf("could not commit instance %s: %w", i, err)
-		}
-	}
-
-	return nil
+	return mfs, v, nil
 }
