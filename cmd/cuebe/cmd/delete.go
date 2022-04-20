@@ -29,9 +29,9 @@ func newDeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "delete",
 		SuggestFor: []string{"remove", "uninstall"},
-		Short:      "Delete context from k8s cluster.",
+		Short:      "Delete all instances found in Build.",
 		Long: `
-Delete context from k8s cluster.
+Delete all instances found in provided context from the k8s cluster.
 
 It first group manifests found in the context by instance.
 Then it deletes those instances.
@@ -52,7 +52,7 @@ cuebe delete --dry-run .
 	factory.BuildContextAware(cmd)
 
 	f := cmd.Flags()
-	f.StringP("cluster", "c", "", "Cluster context. If starting with a $, it will be extracted at this path.")
+	f.StringP("cluster", "c", "", "Kube config context. If starting with a $, it will be extracted from the Build at this CUE path.")
 	return cmd
 }
 
@@ -71,7 +71,7 @@ func runDelete(cmd *cobra.Command, args []string) {
 		ctx, err = build.LookupPath(path).String()
 		cobra.CheckErr(err)
 	}
-	if ctx == "" && !prompt.YesNo("Delete from current context?", cmd.InOrStdin(), cmd.OutOrStdout()) {
+	if ctx == "" && !prompt.YesNo("Delete from current kube config context?", cmd.InOrStdin(), cmd.OutOrStdout()) {
 		cobra.CheckErr("Canceled by user")
 	}
 	konfig, err := getK8sConfig(ctx)

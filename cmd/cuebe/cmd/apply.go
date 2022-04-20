@@ -63,7 +63,7 @@ cuebe apply --dry-run .
 	factory.BuildContextAware(cmd)
 
 	f := cmd.Flags()
-	f.StringP("cluster", "c", "", "Cluster context. If starting with a $, it will be extracted at this path.")
+	f.StringP("cluster", "c", "", "Kube config context. If starting with a $, it will be extracted from the Build at this CUE path.")
 	return cmd
 }
 
@@ -82,7 +82,7 @@ func runApply(cmd *cobra.Command, args []string) {
 		ctx, err = build.LookupPath(path).String()
 		cobra.CheckErr(err)
 	}
-	if ctx == "" && !prompt.YesNo("Deploy on current context?", cmd.InOrStdin(), cmd.OutOrStdout()) {
+	if ctx == "" && !prompt.YesNo("Deploy on current kube config context?", cmd.InOrStdin(), cmd.OutOrStdout()) {
 		cobra.CheckErr("Canceled by user")
 	}
 	konfig, err := getK8sConfig(ctx)
