@@ -29,7 +29,7 @@ func (o *Orphan) Commit(ctx context.Context, config *utils.K8sConfig, opts utils
 		wg.Add(1)
 		go func(m manifest.Manifest) {
 			defer wg.Done()
-			newM, err := m.Patch(ctx, config.RESTMapper, config.DynamicClient, opts.PatchOptions())
+			newM, err := m.Patch(ctx, config, opts)
 			if err != nil {
 				cerr <- fmt.Errorf("applying manifest %s: %w", m.Id(), err)
 				return
@@ -53,7 +53,7 @@ func (o *Orphan) Delete(ctx context.Context, config *utils.K8sConfig, opts utils
 		wg.Add(1)
 		go func(m manifest.Manifest) {
 			defer wg.Done()
-			err := m.Delete(ctx, config.RESTMapper, config.DynamicClient, opts.DeleteOptions())
+			err := m.Delete(ctx, config, opts)
 			if err != nil {
 				cerr <- fmt.Errorf("deleting manifest %s: %w", m.Id(), err)
 				return

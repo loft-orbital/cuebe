@@ -47,13 +47,13 @@ func TestManifestDelete(t *testing.T) {
 	m := NewUnique()
 	m.SetAPIVersion("testing")
 	m.SetKind("Foo")
-	assert.Error(t, m.Delete(context.Background(), konfig.RESTMapper, client, metav1.DeleteOptions{}))
+	assert.Error(t, m.Delete(context.Background(), konfig, utils.CommonMetaOptions{}))
 
 	m.SetKind("Manifest")
 	cluster.Resources.Store(m.Id(), m)
 
 	assert.True(t, cluster.Contains(m.Id()), "Cluster should contains the manifest before delete")
-	assert.NoError(t, m.Delete(context.Background(), konfig.RESTMapper, client, metav1.DeleteOptions{}))
+	assert.NoError(t, m.Delete(context.Background(), konfig, utils.CommonMetaOptions{}))
 	assert.False(t, cluster.Contains(m.Id()), "Cluster should not contains the manifest after delete")
 }
 
@@ -79,7 +79,7 @@ func TestManifestDeleteAbandon(t *testing.T) {
 	cluster.Resources.Store(m.Id(), m)
 
 	assert.True(t, cluster.Contains(m.Id()), "Cluster should contains the manifest before delete")
-	assert.NoError(t, m.Delete(context.Background(), konfig.RESTMapper, client, metav1.DeleteOptions{}))
+	assert.NoError(t, m.Delete(context.Background(), konfig, utils.CommonMetaOptions{}))
 
 	actual, found := cluster.Resources.Load(m.Id())
 	assert.True(t, found, "Cluster should still contains the manifest after abandon")
@@ -107,13 +107,13 @@ func TestManifestPatch(t *testing.T) {
 	m.SetAPIVersion("testing")
 	m.SetKind("Foo")
 
-	_, err := m.Patch(context.Background(), konfig.RESTMapper, client, metav1.PatchOptions{})
+	_, err := m.Patch(context.Background(), konfig, utils.CommonMetaOptions{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "could not get resource interface:")
 
 	m.SetKind("Manifest")
 	assert.False(t, cluster.Contains(m.Id()), "Cluster should not contains the manifest before patch")
-	expected, err := m.Patch(context.Background(), konfig.RESTMapper, client, metav1.PatchOptions{})
+	expected, err := m.Patch(context.Background(), konfig, utils.CommonMetaOptions{})
 	assert.NoError(t, err)
 	actual, found := cluster.Resources.Load(m.Id())
 	assert.True(t, found, "Cluster should contains the manifest after patch")
@@ -123,7 +123,7 @@ func TestManifestPatch(t *testing.T) {
 	m.SetUnstructuredContent(map[string]interface{}{"foo": math.NaN()})
 	m.SetAPIVersion("testing")
 	m.SetKind("Manifest")
-	_, err = m.Patch(context.Background(), konfig.RESTMapper, client, metav1.PatchOptions{})
+	_, err = m.Patch(context.Background(), konfig, utils.CommonMetaOptions{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unable to marshal object:")
 }

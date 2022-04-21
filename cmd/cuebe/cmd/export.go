@@ -16,8 +16,6 @@ limitations under the License.
 package cmd
 
 import (
-	"io"
-
 	"github.com/loft-orbital/cuebe/cmd/cuebe/factory"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -54,8 +52,6 @@ func runExport(cmd *cobra.Command, args []string) {
 	encoder := yaml.NewEncoder(w)
 	defer encoder.Close()
 	for _, m := range mfs {
-		_, err := io.WriteString(w, "---\n")
-		cobra.CheckErr(err)
 		cobra.CheckErr(encoder.Encode(m.Object))
 	}
 }

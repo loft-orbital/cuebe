@@ -16,11 +16,16 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"os"
+	"time"
 
 	"github.com/loft-orbital/cuebe/cmd/cuebe/cmd/mod"
+	"github.com/loft-orbital/cuebe/pkg/log"
 	"github.com/spf13/cobra"
 )
+
+type cancelKey struct{}
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -31,6 +36,8 @@ var RootCmd = &cobra.Command{
   Find more information at: https://github.com/loft-orbital/cuebe
 `,
 	DisableAutoGenTag: true,
+	PersistentPreRun:  setContext,
+	PersistentPostRun: cleanContext,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -43,6 +50,8 @@ func Execute() {
 }
 
 func init() {
+	RootCmd.PersistentFlags().Duration("timeout", 2*time.Minute, "Timeout, accpet any valid go Duration.")
+
 	RootCmd.AddCommand(
 		newApplyCmd(),
 		newExportCmd(),
@@ -51,4 +60,25 @@ func init() {
 		newVersionCmd(),
 		mod.RootCmd,
 	)
+}
+
+func setContext(cmd *cobra.Command, args []string) {
+	timeout, err := cmd.Flags().GetDuration("timeout")
+	cobra.CheckErr(err)
+
+	// add timeout
+	withTimeout, cancel := context.WithTimeout(cmd.Context(), timeout)
+	withCancel := context.WithValue(withTimeout, cancelKey{}, cancel)
+	// add logger
+	withLog := log.WithLogger(withCancel, log.NewIOLogger(cmd.OutOrStdout(), cmd.ErrOrStderr()))
+
+	cmd.SetContext(withLog)
+}
+
+func cleanContext(cmd *cobra.Command, args []string) {
+	v := cmd.Context().Value(cancelKey{})
+	if cancel, ok := v.(context.CancelFunc); ok {
+		// need to release the context
+		cancel()
+	}
 }
