@@ -3,8 +3,8 @@
 Kubernetes release manager powered by [CUE](https://cuelang.org/).
 
 > 🚧 Disclaimer:
-> This is an alpha version of cuebe.
-> cuebe is not yet ready for production environments.
+> Cuebe is in beta version
+> It is actively maintained but not yet ready to be used in production.
 
 ## Why?
 
