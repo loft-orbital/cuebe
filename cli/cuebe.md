@@ -12,13 +12,16 @@ cuebe handles CUE Kubernetes release.
 ### Options
 
 ```
-  -h, --help   help for cuebe
+  -h, --help               help for cuebe
+      --timeout duration   Timeout, accpet any valid go Duration. (default 2m0s)
 ```
 
 ### SEE ALSO
 
-* [cuebe apply](cli/cuebe_apply.md)	 - Apply release to Kubernetes
+* [cuebe apply](cli/cuebe_apply.md)	 - Apply context to k8s cluster.
+* [cuebe delete](cli/cuebe_delete.md)	 - Delete all instances found in Build.
 * [cuebe export](cli/cuebe_export.md)	 - Export manifests as YAML.
 * [cuebe mod](cli/cuebe_mod.md)	 - manage CUE modules.
+* [cuebe pack](cli/cuebe_pack.md)	 - Package a context.
 * [cuebe version](cli/cuebe_version.md)	 - Print current version
 

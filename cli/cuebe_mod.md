@@ -31,6 +31,12 @@ When dealing with private modules, cuebe offers two solutions:
   -h, --help   help for mod
 ```
 
+### Options inherited from parent commands
+
+```
+      --timeout duration   Timeout, accpet any valid go Duration. (default 2m0s)
+```
+
 ### SEE ALSO
 
 * [cuebe](cli/cuebe.md)	 - Handle CUE kubernetes release

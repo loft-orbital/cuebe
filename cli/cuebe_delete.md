@@ -1,35 +1,30 @@
-## cuebe apply
+## cuebe delete
 
-Apply context to k8s cluster.
+Delete all instances found in Build.
 
 ### Synopsis
 
-Apply context to k8s cluster.
 
-Apply uses server-side apply patch to apply the context.
-For more information about server-side apply see:
-  https://kubernetes.io/docs/reference/using-api/server-side-apply/
+Delete all instances found in provided context from the k8s cluster.
 
-It applies every manifests found in the provided context,
-grouping them by instance if necessary.
-
+It first group manifests found in the context by instance.
+Then it deletes those instances.
+Cuebe delete respects the deletion policy annotation "cuebe.loft-orbital.com/deletion-policy".
+		
 
 ```
-cuebe apply [flags]
+cuebe delete [flags]
 ```
 
 ### Examples
 
 ```
 
-# Apply current directory with an encrypted file override
-cuebe apply . main.enc.yaml
+# Delete all instances in the current dir
+cuebe delete .
 
-# Extract Kubernetes context from <Build>.path.to.context
-cuebe apply -c $path.to.context .
-
-# Perform a dry-run (do not persist changes)
-cuebe apply --dry-run .
+# Same but doing a dry-run
+cuebe delete --dry-run .
 
 ```
 
@@ -40,7 +35,7 @@ cuebe apply --dry-run .
       --dry-run              Submit server-side request without persisting the resource.
   -e, --expression strings   Expressions to extract manifests from. Default to root.
   -f, --force                Force apply.
-  -h, --help                 help for apply
+  -h, --help                 help for delete
   -m, --manager string       Field manager. Override at your own risk. (default "cuebe")
   -t, --tag stringArray      Inject boolean or key=value tag.
 ```
