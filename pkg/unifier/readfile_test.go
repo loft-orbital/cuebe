@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,10 @@ import (
 )
 
 func TestReadFile(t *testing.T) {
+	if runtime.GOOS == "windows" && os.Getenv("CI") != "" {
+		t.Skip("skipping fs related test on windows")
+	}
+
 	// Encrypted
 	fe, err := ioutil.TempFile("", "*.enc.yaml")
 	require.NoError(t, err)

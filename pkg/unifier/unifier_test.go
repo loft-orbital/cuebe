@@ -93,6 +93,10 @@ func TestUnify(t *testing.T) {
 }
 
 func TestAddFile(t *testing.T) {
+	if runtime.GOOS == "windows" && os.Getenv("CI") != "" {
+		t.Skip("skipping fs related test on windows")
+	}
+
 	u := &Unifier{ctx: cuecontext.New()}
 
 	// Unsupported extension

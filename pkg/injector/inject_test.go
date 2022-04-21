@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"runtime"
 	"testing"
 
 	"cuelang.org/go/cue/cuecontext"
@@ -37,6 +38,10 @@ func TestInjectFileNoSrc(t *testing.T) {
 }
 
 func TestInjectFile(t *testing.T) {
+	if runtime.GOOS == "windows" && os.Getenv("CI") != "" {
+		t.Skip("skipping fs related test on windows")
+	}
+
 	f, err := ioutil.TempFile("", "*.json")
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
