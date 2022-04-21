@@ -202,10 +202,13 @@ configmap: {
 ### Context
 
 A Context is basically a filesystem that Cuebe uses to Build manifests and instances.
+Currently Cuebe only supports local contexts (single file or directory).
+Archives (`tar.gz`) and remote Contexts (object storage, https endpoint, etc..) are in the pipe.
+
 When sending multiple Contexts to Cuebe, they will be merged before build.
 Think `rsync -a /ContextA/ /ContextB/`.
 
-With Cuebe cli you can _pack_ a Context to upload it and reuse it during _apply_ or _export_.
+With Cuebe cli you can _pack_ a Context to upload it and reuse it during _apply_ or _export_ as soon as packs context (so-called cube) are supported.
 
 ## Examples
 
