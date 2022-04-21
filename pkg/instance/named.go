@@ -241,7 +241,7 @@ func (i *Named) prepareCommit(ctx context.Context, config *utils.K8sConfig, opts
 func (i *Named) applyManifest(m manifest.Manifest, a action, cid chan<- manifest.Id, ctx context.Context, config *utils.K8sConfig, opts utils.CommonMetaOptions) error {
 	switch a {
 	case actionDelete:
-		if err := m.Delete(ctx, config.RESTMapper, config.DynamicClient, opts.DeleteOptions()); err != nil {
+		if err := m.Delete(ctx, config, opts); err != nil {
 			// we could not delete the manifest, so keep its reference in the instance.
 			cid <- m.Id()
 			return err
@@ -254,7 +254,7 @@ func (i *Named) applyManifest(m manifest.Manifest, a action, cid chan<- manifest
 		}
 
 		// patch
-		_, err := m.Patch(ctx, config.RESTMapper, config.DynamicClient, opts.PatchOptions())
+		_, err := m.Patch(ctx, config, opts)
 		if err != nil {
 			return err
 		}
