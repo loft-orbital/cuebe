@@ -58,7 +58,7 @@ cuebe apply -c colima .
 	factory.BuildContextAware(cmd)
 
 	f := cmd.Flags()
-	f.StringP("cluster", "c", "", "Kube config context. If starting with a $, it will be extracted from the Build at this CUE path.")
+	f.StringP("cluster", "c", "", "Kube config context. If starting with a . (dot), it will be extracted from the Build at this CUE path.")
 	return cmd
 }
 
