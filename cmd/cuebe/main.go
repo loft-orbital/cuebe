@@ -15,7 +15,11 @@ limitations under the License.
 */
 package main
 
-import "github.com/loft-orbital/cuebe/cmd/cuebe/cmd"
+import (
+	"github.com/loft-orbital/cuebe/cmd/cuebe/cmd"
+
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+)
 
 func main() {
 	cmd.Execute()
