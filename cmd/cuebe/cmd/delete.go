@@ -43,6 +43,12 @@ cuebe delete .
 
 # Same but doing a dry-run
 cuebe delete --dry-run .
+
+# Delete using Kubernetes context from <Build>.path.to.context
+cuebe apply -c .release.context .
+
+# Delete using one of your available kubectl config context
+cuebe apply -c colima .
 `,
 		Run: runDelete,
 	}
@@ -65,8 +71,9 @@ func runDelete(cmd *cobra.Command, args []string) {
 
 	// get kube config
 	ctx, err := cmd.Flags().GetString("cluster")
-	if strings.HasPrefix(ctx, "$") {
-		path := cue.ParsePath(strings.TrimLeft(ctx, "$"))
+	cobra.CheckErr(err)
+	if strings.HasPrefix(ctx, ".") {
+		path := cue.ParsePath(strings.TrimLeft(ctx, "."))
 		cobra.CheckErr(path.Err())
 		ctx, err = build.LookupPath(path).String()
 		cobra.CheckErr(err)
