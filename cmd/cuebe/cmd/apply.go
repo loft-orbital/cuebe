@@ -50,7 +50,10 @@ grouping them by instance if necessary.
 cuebe apply . main.enc.yaml
 
 # Extract Kubernetes context from <Build>.path.to.context
-cuebe apply -c $path.to.context .
+cuebe apply -c .release.context .
+
+# Apply useing ne of your available kubectl config context
+cuebe apply -c colima .
 
 # Perform a dry-run (do not persist changes)
 cuebe apply --dry-run .
@@ -76,8 +79,9 @@ func runApply(cmd *cobra.Command, args []string) {
 
 	// get kube config
 	ctx, err := cmd.Flags().GetString("cluster")
-	if strings.HasPrefix(ctx, "$") {
-		path := cue.ParsePath(strings.TrimLeft(ctx, "$"))
+	cobra.CheckErr(err)
+	if strings.HasPrefix(ctx, ".") {
+		path := cue.ParsePath(strings.TrimLeft(ctx, "."))
 		cobra.CheckErr(path.Err())
 		ctx, err = build.LookupPath(path).String()
 		cobra.CheckErr(err)
