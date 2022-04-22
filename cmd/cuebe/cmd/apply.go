@@ -50,7 +50,11 @@ grouping them by instance if necessary.
 cuebe apply . main.enc.yaml
 
 # Extract Kubernetes context from <Build>.path.to.context
-cuebe apply -c $path.to.context .
+# You will have to escape the $ sign otherwise you shell environment will try to interpret it
+cuebe apply -c \$path.to.context .
+
+# Use one of your available kubectl config context
+cuebe apply -c colima .
 
 # Perform a dry-run (do not persist changes)
 cuebe apply --dry-run .
