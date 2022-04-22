@@ -52,7 +52,7 @@ cuebe apply . main.enc.yaml
 # Extract Kubernetes context from <Build>.path.to.context
 cuebe apply -c .release.context .
 
-# Apply useing ne of your available kubectl config context
+# Apply using one of your available kubectl config context
 cuebe apply -c colima .
 
 # Perform a dry-run (do not persist changes)
