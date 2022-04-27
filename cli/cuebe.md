@@ -21,6 +21,7 @@ cuebe handles CUE Kubernetes release.
 * [cuebe apply](cli/cuebe_apply.md)	 - Apply context to k8s cluster.
 * [cuebe delete](cli/cuebe_delete.md)	 - Delete all instances found in Build.
 * [cuebe export](cli/cuebe_export.md)	 - Export manifests as YAML.
+* [cuebe install](cli/cuebe_install.md)	 - Install Cuebe to K8s cluster.
 * [cuebe mod](cli/cuebe_mod.md)	 - manage CUE modules.
 * [cuebe pack](cli/cuebe_pack.md)	 - Package a context.
 * [cuebe version](cli/cuebe_version.md)	 - Print current version

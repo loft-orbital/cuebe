@@ -26,7 +26,10 @@ cuebe apply [flags]
 cuebe apply . main.enc.yaml
 
 # Extract Kubernetes context from <Build>.path.to.context
-cuebe apply -c $path.to.context .
+cuebe apply -c .release.context .
+
+# Apply using one of your available kubectl config context
+cuebe apply -c colima .
 
 # Perform a dry-run (do not persist changes)
 cuebe apply --dry-run .
@@ -36,7 +39,7 @@ cuebe apply --dry-run .
 ### Options
 
 ```
-  -c, --cluster string       Kube config context. If starting with a $, it will be extracted from the Build at this CUE path.
+  -c, --cluster string       Kube config context. If starting with a . (dot), it will be extracted from the Build at this CUE path.
       --dry-run              Submit server-side request without persisting the resource.
   -e, --expression strings   Expressions to extract manifests from. Default to root.
   -f, --force                Force apply.
