@@ -27,7 +27,7 @@ func GetBuildOpt(cmd *cobra.Command) *BuildOpt {
 // It adds the required flags and PreRunE function to the command.
 func BuildAware(cmd *cobra.Command) {
 	f := cmd.Flags()
-	f.StringSliceP("expression", "e", []string{}, "Expressions to extract manifests from. Default to root.")
+	f.StringArrayP("expression", "e", []string{}, "Expressions to extract manifests from. Default to root.")
 	f.StringArrayP("tag", "t", []string{}, "Inject boolean or key=value tag.")
 
 	AppendPreRun(cmd, buildPreRun)
@@ -38,7 +38,7 @@ func buildPreRun(cmd *cobra.Command, args []string) {
 	fs := cmd.Flags()
 	bo := new(BuildOpt)
 
-	bo.Expressions, err = fs.GetStringSlice("expression")
+	bo.Expressions, err = fs.GetStringArray("expression")
 	cobra.CheckErr(err)
 	// for some reason setting a string slice with empty string as default in the flag does not work.
 	if len(bo.Expressions) <= 0 {
