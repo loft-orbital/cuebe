@@ -39,13 +39,13 @@ cuebe apply --dry-run .
 ### Options
 
 ```
-  -c, --cluster string       Kube config context. If starting with a . (dot), it will be extracted from the Build at this CUE path.
-      --dry-run              Submit server-side request without persisting the resource.
-  -e, --expression strings   Expressions to extract manifests from. Default to root.
-  -f, --force                Force apply.
-  -h, --help                 help for apply
-  -m, --manager string       Field manager. Override at your own risk. (default "cuebe")
-  -t, --tag stringArray      Inject boolean or key=value tag.
+  -c, --cluster string           Kube config context. If starting with a . (dot), it will be extracted from the Build at this CUE path.
+      --dry-run                  Submit server-side request without persisting the resource.
+  -e, --expression stringArray   Expressions to extract manifests from. Default to root.
+  -f, --force                    Force apply.
+  -h, --help                     help for apply
+  -m, --manager string           Field manager. Override at your own risk. (default "cuebe")
+  -t, --tag stringArray          Inject boolean or key=value tag.
 ```
 
 ### Options inherited from parent commands

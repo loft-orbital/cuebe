@@ -25,9 +25,9 @@ cuebe export -i main.enc.yaml
 ### Options
 
 ```
-  -e, --expression strings   Expressions to extract manifests from. Default to root.
-  -h, --help                 help for export
-  -t, --tag stringArray      Inject boolean or key=value tag.
+  -e, --expression stringArray   Expressions to extract manifests from. Default to root.
+  -h, --help                     help for export
+  -t, --tag stringArray          Inject boolean or key=value tag.
 ```
 
 ### Options inherited from parent commands
