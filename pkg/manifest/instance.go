@@ -17,8 +17,8 @@ package manifest
 
 const (
 	DeletionPolicyAbandon    = "abandon"
-	InstanceLabel            = "cuebe.loft-orbital.com/instance"
-	DeletionPolicyAnnotation = "cuebe.loft-orbital.com/deletion-policy"
+	InstanceLabel            = "instance.cuebe.loftorbital.com/name"
+	DeletionPolicyAnnotation = "instance.cuebe.loftorbital.com/deletion-policy"
 )
 
 // GetInstance retrieve the instance this Manifest belongs to,
