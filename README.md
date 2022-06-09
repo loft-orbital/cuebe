@@ -74,7 +74,7 @@ An instance is a group of [Manifests](#manifest) belonging to the same _applicat
 It's a way to group multiple manifests under the same lifecycle.
 If you're used to Helm, you can see a Cuebe Instance as a [Helm Release](https://helm.sh/docs/intro/using_helm/#three-big-concepts).
 
-A Manifest needs the `"cuebe.loft-orbital.com/instance": <instance-name>` label (in `metadata.labels`) to be a member of the _<instance-name>_ Instance.
+A Manifest needs the `"instance.cuebe.loftorbital.com/name": <instance-name>` label (in `metadata.labels`) to be a member of the _<instance-name>_ Instance.
 It's up to you to set this label on your Manifests.
 
 When deploying an Instance for the first time, Cuebe will create a Instance object.
@@ -83,7 +83,7 @@ It means an Instance must be unique to a cluster.
 You cannot have multiple Instances with the same name in a single cluster.
 
 When deleting an Instance, even outside of Cuebe (e.g. with `kubectl`) it will automatically deletes subresources.
-The way those resources are deleted can be managed with the `"cuebe.loft-orbital.com/deletion-policy"` annotation.
+The way those resources are deleted can be managed with the `"instance.cuebe.loftorbital.com/deletion-policy"` annotation.
 When this annotation is set to `abandon`, the object will not be actually deleted, but its link to the instance removed (we call that an orphan Manifest).
 When this annotations is not set, the object will be normally deleted.
 
