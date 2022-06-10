@@ -9,7 +9,7 @@ Delete all instances found in provided context from the k8s cluster.
 
 It first group manifests found in the context by instance.
 Then it deletes those instances.
-Cuebe delete respects the deletion policy annotation "cuebe.loft-orbital.com/deletion-policy".
+Cuebe delete respects the deletion policy annotation "instance.cuebe.loftorbital.com/deletion-policy".
 		
 
 ```
