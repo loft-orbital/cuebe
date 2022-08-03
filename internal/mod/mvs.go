@@ -88,7 +88,7 @@ func (m *Module) Vendor() error {
 type ModReqs struct {
 	// Root module path
 	Root string
-	// Rot module requirements
+	// Root module requirements
 	RootReqs []module.Version
 }
 

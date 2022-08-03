@@ -72,16 +72,20 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 	}
 
 	// set reference
+	fmt.Println(mod.Version) // DEBUG
 	if mod.Version != "v0.0.0" {
-		gco.ReferenceName = plumbing.NewTagReferenceName(mod.Version)
+		gco.ReferenceName = plumbing.NewBranchReferenceName(mod.Version)
 		gco.SingleBranch = true
+	} else {
+	    gco.ReferenceName = plumbing.NewTagReferenceName(mod.Version)
+        gco.SingleBranch = true
 	}
 
 	// set credentials
-	if meta.Credetials != nil {
+	if meta.Credentials != nil {
 		gco.Auth = &http.BasicAuth{
-			Username: meta.Credetials.User,
-			Password: meta.Credetials.Token,
+			Username: meta.Credentials.User,
+			Password: meta.Credentials.Token,
 		}
 	}
 
