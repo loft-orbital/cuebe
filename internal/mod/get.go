@@ -28,6 +28,7 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/loft-orbital/cuebe/pkg/modfile"
 	"golang.org/x/mod/module"
+	"golang.org/x/mod/semver"
 )
 
 // GetFS returns the cached filesystem for mod.
@@ -71,14 +72,16 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 		Depth: 1,
 	}
 
-	// set reference
-	fmt.Println(mod.Version) // DEBUG
-	if mod.Version != "v0.0.0" {
-		gco.ReferenceName = plumbing.NewBranchReferenceName(mod.Version)
+	// Check if the module version ref is a tag or a branch
+	// will set gco.ReferenceName accordingly
+	// If mod.Versio is considered a valid semver, we will presume the module version is a tag
+	if semver.IsValid(mod.Version) {
+		gco.ReferenceName = plumbing.NewTagReferenceName(mod.Version)
 		gco.SingleBranch = true
 	} else {
-	    gco.ReferenceName = plumbing.NewTagReferenceName(mod.Version)
-        gco.SingleBranch = true
+		// If the module version is not a valid semver, we will consider it a branch
+		gco.ReferenceName = plumbing.NewBranchReferenceName(mod.Version)
+		gco.SingleBranch = true
 	}
 
 	// set credentials
