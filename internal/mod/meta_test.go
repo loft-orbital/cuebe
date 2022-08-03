@@ -32,7 +32,7 @@ func TestParseMeta(t *testing.T) {
 	}{
 		"too short": {"path git", nil, fmt.Errorf("Unexpected go-import length")},
 		"too long":  {"path git path.git stuff", nil, fmt.Errorf("Unexpected go-import length")},
-		"ok":        {"path git path.git", &Meta{RootPath: "path", VCS: "git", RepoURL: "path.git", Credetials: nil}, nil},
+		"ok":        {"path git path.git", &Meta{RootPath: "path", VCS: "git", RepoURL: "path.git", Credentials: nil}, nil},
 	}
 
 	for name, tc := range tcs {
@@ -50,7 +50,7 @@ func TestExtract(t *testing.T) {
 		expected *Meta
 		err      error
 	}{
-		"ok":      {`<html><head><meta name="go-import" content="host.com/owner/project git https://host.com/owner/project.git"/></head><body>go get https://host.com/owner/project</body></html>`, &Meta{RootPath: "host.com/owner/project", VCS: "git", RepoURL: "https://host.com/owner/project.git", Credetials: nil}, nil},
+		"ok":      {`<html><head><meta name="go-import" content="host.com/owner/project git https://host.com/owner/project.git"/></head><body>go get https://host.com/owner/project</body></html>`, &Meta{RootPath: "host.com/owner/project", VCS: "git", RepoURL: "https://host.com/owner/project.git", Credentials: nil}, nil},
 		"no meta": {`<html><body>go get https://host.com/owner/project</body></html>`, nil, fmt.Errorf("Could not find go metadata")},
 		"eof":     {"", nil, io.EOF},
 	}

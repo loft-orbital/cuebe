@@ -42,7 +42,7 @@ type Meta struct {
 	// RepoURL represents the clone url of a module.
 	RepoURL    string
 	RootPath   string
-	Credetials *Credentials
+	Credentials *Credentials
 }
 
 // GetMeta retrieves the metadata of a module.
@@ -58,7 +58,7 @@ func GetMeta(mod module.Version) (*Meta, error) {
 			RootPath:   path,
 			VCS:        vcs,
 			RepoURL:    rurl,
-			Credetials: nil,
+			Credentials: nil,
 		}, nil
 	}
 
@@ -84,7 +84,7 @@ func GetMeta(mod module.Version) (*Meta, error) {
 		select {
 		case rm := <-crm:
 			if private {
-				rm.Credetials = &Credentials{User: usr, Token: pwd}
+				rm.Credentials = &Credentials{User: usr, Token: pwd}
 			}
 			return rm, nil
 		case <-ctx.Done(): // Timeout

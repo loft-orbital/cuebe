@@ -39,7 +39,7 @@ func BuildList(root module.Version, reqs Reqs) ([]module.Version, error) {
 	selected := map[string]string{}
 	next := []module.Version{root}
 	wc := 10                           // number of parallel worker
-	rqc := make(chan []module.Version) // module requirements channel workers use to comunicate
+	rqc := make(chan []module.Version) // module requirements channel workers use to communicate
 
 	it := 0 // current index in the 'next' slice
 	for it < len(next) {
