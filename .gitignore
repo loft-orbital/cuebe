@@ -30,7 +30,8 @@
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -77,3 +78,7 @@ bin/
 
 dist/
 /build
+
+# Editor
+.vscode/
+.idea/
