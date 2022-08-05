@@ -1,4 +1,0 @@
-make: Entering directory `/Users/thomas/Workspace/VCS/github.com/loft-orbital/cuebe'
-go build -trimpath -o "bin/cuebe" -ldflags='-s -w -X "github.com/loft-orbital/cuebe/cmd/cuebe/cmd.version=dev" -X "github.com/loft-orbital/cuebe/cmd/cuebe/cmd.commit=53feb7a" -X "github.com/loft-orbital/cuebe/cmd/cuebe/cmd.date=Wed Aug 03 09:06:07 2022"' cmd/cuebe/main.go
-make: Leaving directory `/Users/thomas/Workspace/VCS/github.com/loft-orbital/cuebe'
- 
