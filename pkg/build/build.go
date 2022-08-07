@@ -17,8 +17,10 @@ package build
 
 import (
 	"fmt"
+	"strings"
 
 	"cuelang.org/go/cue"
+	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/load"
 	"github.com/loft-orbital/cuebe/pkg/context"
 	"github.com/loft-orbital/cuebe/pkg/injector"
@@ -56,6 +58,14 @@ func Build(bctx *context.Context, cfg *load.Config) (cue.Value, error) {
 
 	// do injections
 	v = injector.Inject(v, bctx.GetFS())
+
+	if v.Err() != nil {
+		w := &strings.Builder{}
+		errors.Print(w, v.Err(), &errors.Config{
+			Cwd: tempdir,
+		})
+		return v, errors.New(w.String())
+	}
 
 	return v, v.Err()
 }

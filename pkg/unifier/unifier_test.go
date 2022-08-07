@@ -56,16 +56,12 @@ func TestLoad(t *testing.T) {
 	b, _ := u.values[0].MarshalJSON()
 	assert.Equal(t, "{\"hello\":\"cuebe\"}", string(b))
 
-	// Cue error (both files)
-	u, err = Load([]string{f2.Name(), f.Name()}, &load.Config{Dir: d})
-	assert.EqualError(t, err, "failed to build instances: hello: conflicting values false and \"cuebe\" (mismatched types bool and string)")
-
 	d2, err := ioutil.TempDir("", "cuebetest")
 	require.NoError(t, err)
 	defer os.RemoveAll(d2)
 	// Empty both
 	u, err = Load([]string{}, &load.Config{Dir: d2})
-	assert.EqualError(t, err, "failed to load instances: no CUE files in .")
+	assert.EqualError(t, err, "failed to build instances: no CUE files in .")
 
 	// Empty directory
 	u, err = Load([]string{f2.Name()}, nil)
