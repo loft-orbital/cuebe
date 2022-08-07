@@ -41,17 +41,10 @@ func Load(entrypoints []string, cfg *load.Config) (*Unifier, error) {
 		ctx: cuecontext.New(),
 	}
 	bis := load.Instances(entrypoints, cfg)
-	for _, bi := range bis {
-		if bi.Err != nil {
-			return nil, fmt.Errorf("failed to load instances: %w", bi.Err)
-		}
-
-		v := u.ctx.BuildInstance(bi)
-		if v.Err() != nil {
-			return nil, fmt.Errorf("failed to build instances: %w", v.Err())
-		}
-
-		u.values = append(u.values, v)
+	var err error
+	u.values, err = u.ctx.BuildInstances(bis)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build instances: %w", err)
 	}
 
 	return u, nil
