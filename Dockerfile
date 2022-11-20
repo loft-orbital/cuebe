@@ -17,7 +17,7 @@ COPY . .
 RUN make build
 
 # go install cuelang
-RUN go install cuelang.org/go/cmd/cue@v0.4.0
+RUN go install cuelang.org/go/cmd/cue@v0.4.3
 
 #########################################################
 # gcloud cli install
