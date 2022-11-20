@@ -1,5 +1,7 @@
 * [Home](/)
 * [cuebe](cli/cuebe.md)
+  * [export](cli/cuebe_export.md)
+  * [install](cli/cuebe_install.md)
   * [mod](cli/cuebe_mod.md)
     * [gen](cli/cuebe_mod_gen.md)
     * [vendor](cli/cuebe_mod_vendor.md)
@@ -7,5 +9,3 @@
   * [version](cli/cuebe_version.md)
   * [apply](cli/cuebe_apply.md)
   * [delete](cli/cuebe_delete.md)
-  * [export](cli/cuebe_export.md)
-  * [install](cli/cuebe_install.md)
