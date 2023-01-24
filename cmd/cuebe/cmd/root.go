@@ -55,6 +55,7 @@ func init() {
 	RootCmd.AddCommand(
 		newApplyCmd(),
 		newDeleteCmd(),
+		newDescribeCmd(),
 		newExportCmd(),
 		newInstallCmd(),
 		newPackCmd(),

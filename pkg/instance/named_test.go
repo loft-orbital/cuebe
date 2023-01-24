@@ -204,3 +204,31 @@ func TestNamedCommit(t *testing.T) {
 	assert.Len(t, ni.Spec.Resources, 1)
 	assert.Equal(t, m.Id(), ni.Spec.Resources[0])
 }
+
+func TestNamedGet(t *testing.T) {
+	konfig, tfake, client := utils.NewFakeK8sConfig()
+	instresources := &metav1.APIResourceList{
+		GroupVersion: Group + "/" + Version,
+		APIResources: []metav1.APIResource{
+			{
+				Name:       Resource,
+				Kind:       Kind,
+				Verbs:      metav1.Verbs{"delete, create, patch, get"},
+				Namespaced: false,
+			},
+		},
+	}
+	tfake.Resources = append(tfake.Resources, instresources)
+	cluster := mock.NewCluster(client, tfake.Resources...)
+
+	i := NewNamed("potato")
+	cluster.Resources.Store(i.Id(), i)
+
+	actual, err := Get(context.Background(), "tomato", konfig, utils.CommonMetaOptions{})
+	assert.Nil(t, actual)
+	assert.EqualError(t, err, "Could not get instance: instances.cuebe.loftorbital.com \"tomato\" not found")
+
+	actual, err = Get(context.Background(), "potato", konfig, utils.CommonMetaOptions{})
+	assert.NoError(t, err)
+	assert.Implements(t, (*Instance)(nil), actual)
+}

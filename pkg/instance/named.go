@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -70,8 +71,8 @@ type Named struct {
 func NewNamed(name string) *Named {
 	return &Named{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "Instance",
-			APIVersion: "cuebe.loftorbital.com/v1alpha1",
+			Kind:       Kind,
+			APIVersion: gvk.GroupVersion().String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -79,6 +80,23 @@ func NewNamed(name string) *Named {
 
 		manifests: make(map[manifest.Id]manifest.Manifest),
 	}
+}
+
+// Get get the instance from the cluster.
+func Get(ctx context.Context, name string, config *utils.K8sConfig, opts utils.CommonMetaOptions) (*Named, error) {
+	i := NewNamed(name)
+
+	resource := config.DynamicClient.Resource(gvk)
+	u, err := resource.Get(ctx, i.Name, opts.GetOptions())
+	if err != nil {
+		return nil, fmt.Errorf("Could not get instance: %w", err)
+	}
+
+	if err := i.reflect(u); err != nil {
+		return nil, fmt.Errorf("Could not parse instance: %w", err)
+	}
+
+	return i, nil
 }
 
 // Id returns the instance id as a manifest.Id.
