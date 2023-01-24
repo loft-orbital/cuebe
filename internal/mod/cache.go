@@ -46,10 +46,6 @@ func CacheDir() (billy.Filesystem, error) {
 	return cache, nil
 }
 
-func pathFrom(m module.Version) string {
-	return m.Path + "@" + m.Version
-}
-
 // CacheLoad retrieve the module's filesystem from the cache.
 // This filesystem can be empty (os.ErrNotExist).
 func CacheLoad(m module.Version) (billy.Filesystem, error) {
@@ -58,8 +54,8 @@ func CacheLoad(m module.Version) (billy.Filesystem, error) {
 		return nil, fmt.Errorf("getting cache: %w", err)
 	}
 
-	path := pathFrom(m)
-	return cd.Chroot(path)
+	fmt.Printf("%+v\n", m)
+	return cd.Chroot(m.String())
 }
 
 // CacheStore store a module filesystem to the global cache.
@@ -70,8 +66,7 @@ func CacheStore(m module.Version, fs billy.Filesystem) (billy.Filesystem, error)
 		return nil, fmt.Errorf("getting cache: %w", err)
 	}
 
-	path := pathFrom(m)
-	mFS, err := cd.Chroot(path)
+	mFS, err := cd.Chroot(m.String())
 	if err != nil {
 		return nil, fmt.Errorf("getting module cache: %w", err)
 	}
