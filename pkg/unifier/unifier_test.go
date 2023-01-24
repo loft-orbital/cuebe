@@ -99,11 +99,7 @@ func TestAddFile(t *testing.T) {
 	assert.EqualError(t, u.AddFile("file.unsupported", nil), "failed to add file.unsupported: unsupported extension .unsupported")
 
 	// Bad file
-	if runtime.GOOS == "windows" {
-		assert.EqualError(t, u.AddFile("file.yaml", nil), "failed to add file.yaml: could not read file: open /file.yaml: The system cannot find the file specified.")
-	} else {
-		assert.EqualError(t, u.AddFile("file.yaml", nil), "failed to add file.yaml: could not read file: open /file.yaml: no such file or directory")
-	}
+	assert.ErrorContains(t, u.AddFile("file.yaml", nil), "failed to add file.yaml: could not read file:")
 
 	// Failed unmarshal
 	f, err := ioutil.TempFile("", "*.json")

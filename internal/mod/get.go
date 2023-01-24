@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-git/go-billy/v5"
+	"github.com/go-git/go-billy/v5/memfs"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
@@ -74,15 +76,15 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 
 	// Check if the module version ref is a tag or a branch
 	// will set gco.ReferenceName accordingly
-	// If mod.Versio is considered a valid semver, we will presume the module version is a tag
-	if semver.IsValid(mod.Version) {
+	// TODO: lot of patches and workaround here. We need to clean that up
+	if semver.IsValid(mod.Version) || semver.IsValid("v"+mod.Version) {
+		// If mod.Version is considered a valid semver, we will presume the module version is a tag
 		gco.ReferenceName = plumbing.NewTagReferenceName(mod.Version)
-		gco.SingleBranch = true
 	} else {
 		// If the module version is not a valid semver, we will consider it a branch
 		gco.ReferenceName = plumbing.NewBranchReferenceName(mod.Version)
-		gco.SingleBranch = true
 	}
+	gco.SingleBranch = true
 
 	// set credentials
 	if meta.Credentials != nil {
@@ -92,10 +94,18 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 		}
 	}
 
+	mfs := memfs.New()
 	// clone repo
-	if _, err := gogit.Clone(memory.NewStorage(), fs, gco); err != nil {
+	if _, err := gogit.Clone(memory.NewStorage(), mfs, gco); err != nil {
 		return fmt.Errorf("failed to clone repo: %w", err)
 	}
 
-	return nil
+	if sd := strings.TrimPrefix(mod.Path, meta.RootPath); sd != "" {
+		mfs, err = mfs.Chroot(sd)
+		if err != nil {
+			return fmt.Errorf("failed to chroot subpath %s %w", sd, err)
+		}
+	}
+
+	return BillyCopy(fs, mfs)
 }

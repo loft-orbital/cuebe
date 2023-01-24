@@ -40,8 +40,8 @@ type Meta struct {
 	// VCS represents the VCS type of a module (git, svn, etc..)
 	VCS string
 	// RepoURL represents the clone url of a module.
-	RepoURL    string
-	RootPath   string
+	RepoURL     string
+	RootPath    string
 	Credentials *Credentials
 }
 
@@ -55,9 +55,9 @@ func GetMeta(mod module.Version) (*Meta, error) {
 		rurl := strings.TrimRight(mod.Path[:loc[1]], "/")
 		vcs := rurl[loc[0]+1:]
 		return &Meta{
-			RootPath:   path,
-			VCS:        vcs,
-			RepoURL:    rurl,
+			RootPath:    path,
+			VCS:         vcs,
+			RepoURL:     rurl,
 			Credentials: nil,
 		}, nil
 	}
@@ -69,34 +69,31 @@ func GetMeta(mod module.Version) (*Meta, error) {
 		// private module, get credentials
 		usr, pwd = CredentialsFor(strings.SplitN(mod.Path, "/", 2)[0])
 	}
-	crm := make(chan *Meta)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel() // Cancel requests as soon as we find the repo
 
 	path := mod.Path
 	for path != "." {
 		// try every paths
-		go getMeta(mod.Path, "https://"+path, usr, pwd, ctx, crm)
-		path = filepath.Dir(path)
+		m, err := getMeta(mod.Path, "https://"+path, usr, pwd, ctx)
+		if err != nil {
+			// TODO: log warning
+			path = filepath.Dir(path)
+			continue
+		}
+		if private {
+			m.Credentials = &Credentials{User: usr, Token: pwd}
+		}
+		return m, nil
 	}
 
-	for {
-		select {
-		case rm := <-crm:
-			if private {
-				rm.Credentials = &Credentials{User: usr, Token: pwd}
-			}
-			return rm, nil
-		case <-ctx.Done(): // Timeout
-			return nil, fmt.Errorf("finding repo: %w", ctx.Err())
-		}
-	}
+	return nil, fmt.Errorf("finding repo: %w", ctx.Err())
 }
 
-func getMeta(mod, url, usr, pwd string, ctx context.Context, res chan<- *Meta) {
+func getMeta(mod, url, usr, pwd string, ctx context.Context) (*Meta, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return
+		return nil, err
 	}
 	req = req.WithContext(ctx)
 
@@ -110,23 +107,20 @@ func getMeta(mod, url, usr, pwd string, ctx context.Context, res chan<- *Meta) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	rm, err := extract(resp.Body)
-	if err != nil {
-		return
+	if resp.StatusCode >= 399 {
+		return nil, err
 	}
 
-	if rm.RootPath == mod {
-		select {
-		case res <- rm:
-			return
-		case <-ctx.Done():
-			return
-		}
+	m, err := extract(resp.Body)
+	if err != nil {
+		return nil, err
 	}
+
+	return m, nil
 }
 
 func extract(r io.Reader) (*Meta, error) {
