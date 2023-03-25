@@ -63,7 +63,7 @@ cuebe apply -c colima .
 }
 
 func runDelete(cmd *cobra.Command, args []string) {
-	mfs, build, err := manifetsFrom(cmd)
+	mfs, build, err := manifestFrom(cmd)
 	cobra.CheckErr(err)
 
 	// group by Instances

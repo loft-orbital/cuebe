@@ -44,7 +44,7 @@ cuebe export -i main.enc.yaml
 }
 
 func runExport(cmd *cobra.Command, args []string) {
-	mfs, _, err := manifetsFrom(cmd)
+	mfs, _, err := manifestFrom(cmd)
 	cobra.CheckErr(err)
 
 	// render
