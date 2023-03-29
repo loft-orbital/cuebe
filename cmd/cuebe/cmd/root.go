@@ -56,6 +56,7 @@ func init() {
 		newApplyCmd(),
 		newDeleteCmd(),
 		newExportCmd(),
+		newEvalCmd(),
 		newInstallCmd(),
 		newPackCmd(),
 		newVersionCmd(),
