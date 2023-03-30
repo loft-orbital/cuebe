@@ -23,6 +23,8 @@ import (
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/osfs"
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/loft-orbital/cuebe/internal/mvs"
 	"github.com/loft-orbital/cuebe/pkg/modfile"
 	"golang.org/x/mod/module"
@@ -51,13 +53,17 @@ func New(dir string) (*Module, error) {
 	return &Module{
 		root:    module.Version{Path: mf.Module},
 		storage: fs,
-		reqs:    ModReqs{Root: mf.Module, RootReqs: mf.Require},
+		reqs: ModReqs{
+			Root:     mf.Module,
+			RootReqs: mf.Require,
+		},
 	}, nil
 }
 
 // Vendor uses MVS algorithm to compute all requirements and vendor them
 // in the cue.mod/pkg directory.
 func (m *Module) Vendor() error {
+	m.reqs.Replace()
 	reqs, err := mvs.BuildList(m.root, m.reqs)
 	if err != nil {
 		return fmt.Errorf("failed to build requirements: %w", err)
@@ -112,4 +118,30 @@ func (mr ModReqs) Required(m module.Version) ([]module.Version, error) {
 
 func (mr ModReqs) Compare(v, w string) int {
 	return semver.Compare(v, w)
+}
+
+// Replace a tag
+func (mr ModReqs) Replace() {
+	for index, req := range mr.RootReqs {
+		if req.Version == "latest" {
+			// Get Latest Tag
+			meta, _ := GetMeta(req)
+			gco := &gogit.CloneOptions{
+				URL: meta.RepoURL,
+			}
+			// set credentials
+			if meta.Credentials != nil {
+				gco.Auth = &http.BasicAuth{
+					Username: meta.Credentials.User,
+					Password: meta.Credentials.Token,
+				}
+			}
+			latestTag, err := GetLatestTag(gco)
+			if err != nil {
+				fmt.Errorf("failed to get the latest tag for %s: %w", req.Path, err)
+			}
+			mr.RootReqs = append(mr.RootReqs[:index])
+			mr.RootReqs = append(mr.RootReqs, module.Version{Path: req.Path, Version: latestTag})
+		}
+	}
 }

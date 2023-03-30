@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -58,6 +58,8 @@ func (mrg MockReqs) Required(m module.Version) ([]module.Version, error) {
 
 func (mrg MockReqs) Compare(v, w string) int {
 	return semver.Compare(v, w)
+}
+func (mrg MockReqs) Replace() {
 }
 
 func TestBuildList(t *testing.T) {

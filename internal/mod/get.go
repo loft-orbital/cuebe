@@ -25,8 +25,10 @@ import (
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/loft-orbital/cuebe/pkg/modfile"
@@ -37,6 +39,7 @@ import (
 // GetFS returns the cached filesystem for mod.
 // If the module is not yet cached, it will be first downloaded and then cached.
 func GetFS(mod module.Version) (billy.Filesystem, error) {
+	fmt.Println("on cache load ", mod)
 	fs, err := CacheLoad(mod)
 	if err != nil {
 		return nil, fmt.Errorf("loading module from cache: %w", err)
@@ -90,27 +93,6 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 		fmt.Println("Downloading version ", mod.Version)
 		// If mod.Version is considered a valid semver, we will presume the module version is a tag
 		gco.ReferenceName = plumbing.NewTagReferenceName(mod.Version)
-	} else if strings.EqualFold(mod.Version, "latest") {
-		fmt.Println("Downloading whole repo")
-		// Replace the version name in case it is "latest"
-		mod.Version = ""
-		r, err := gogit.PlainClone(fs.Root(), false, gco)
-		if err != nil {
-			return fmt.Errorf("Failed to plain clone repo: %w", err)
-		}
-
-		// Get latestTag
-		latestTag, err := GetLatestTag(r, gco)
-		if err != nil {
-			return fmt.Errorf("Failed to get latest tag: %w", err)
-		}
-		mod.Version = latestTag
-		mod.Path = strings.ReplaceAll(mod.Path, "latest", latestTag)
-		fss, err := CacheLoad(mod)
-		err = Download(mod, fss)
-		if err != nil {
-			fmt.Errorf("Failed to download latest fetched tag: %w", mod.Version)
-		}
 	} else {
 		fmt.Println("Downloading branch")
 		// If the module version is not a valid semver, we will consider it a branch
@@ -123,7 +105,7 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 		}
 	}
 
-	mfs = memfs.New()
+	//mfs = memfs.New()
 	// clone repo
 	if _, err := gogit.Clone(memory.NewStorage(), mfs, gco); err != nil {
 		return fmt.Errorf("failed to clone repo: %w", err)
@@ -135,17 +117,23 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 			return fmt.Errorf("failed to chroot subpath %s %w", sd, err)
 		}
 	}
-
-	fmt.Println("why root ", fs.Root())
 	return BillyCopy(fs, mfs)
 }
 
 // Return latest Tag
-func GetLatestTag(r *gogit.Repository, gco *gogit.CloneOptions) (string, error) {
+func GetLatestTag(gco *gogit.CloneOptions) (string, error) {
+	mypath := strings.ReplaceAll(gco.URL, "https:/", "")
+	fs, err := CacheLoad(module.Version{Path: mypath})
+	fmt.Println("On plain clone ", mypath, fs.Root())
+
+	r, err := gogit.PlainClone(fs.Root(), false, gco)
+	if err != nil {
+		return "", fmt.Errorf("Failed to plain clone repo: %w", err)
+	}
 	var latestTagCommit *object.Commit
 	tags, _ := r.Tags()
 	var latestTagName string
-	err := tags.ForEach(func(t *plumbing.Reference) error {
+	err = tags.ForEach(func(t *plumbing.Reference) error {
 		revision := plumbing.Revision(t.Name().String())
 		tagCommitHash, err := r.ResolveRevision(revision)
 		commit, err := r.CommitObject(*tagCommitHash)
@@ -171,4 +159,28 @@ func GetLatestTag(r *gogit.Repository, gco *gogit.CloneOptions) (string, error) 
 
 	fmt.Println("Latest tag : ", latestTagName)
 	return latestTagName, nil
+}
+
+func GetLatestTagRemote(repoUrl string, auth transport.AuthMethod) (string, error) {
+	// equivalent of git ls-remote
+	// Not possible to add flags
+	rem := gogit.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+		Name:  "origin",
+		URLs:  []string{repoUrl},
+		Fetch: []config.RefSpec{"+refs/tags/*:refs/tags/*"},
+	})
+	// List returned is not sorted
+	refs, err := rem.List(&gogit.ListOptions{
+		Auth: auth,
+	})
+	if err != nil {
+		return "", err
+	}
+	for _, ref := range refs {
+		// It returns also /ref/branch_name
+		if !ref.Name().IsBranch() {
+			fmt.Println("Tag ", ref.Name().Short())
+		}
+	}
+	return "", nil
 }
