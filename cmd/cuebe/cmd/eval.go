@@ -19,12 +19,9 @@ import (
     "github.com/loft-orbital/cuebe/cmd/cuebe/factory"
 	"github.com/spf13/cobra"
 	"fmt"
-// 	"cuelang.org/go/cue"
+	"cuelang.org/go/cue"
 	"github.com/loft-orbital/cuebe/pkg/build"
 	"cuelang.org/go/cue/load"
-// 	"cuelang.org/go/cue/cuecontext"
-//     "cuelang.org/go/cue/format"
-// 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 func newEvalCmd() *cobra.Command {
@@ -33,8 +30,8 @@ func newEvalCmd() *cobra.Command {
 		SuggestFor: []string{"render", "template"},
 		Short:      "Equivalent of cue eval command.",
 		Long: `
-Will evaluate the cue definition without requiring concrete values and produce a JSON output
-the same as 'cue eval' would do.
+Will evaluate the cue definitions without requiring concrete values
+the same way 'cue eval' would do.
 		`,
 		Example: `
 # Export current directory
@@ -50,35 +47,10 @@ cuebe eval .
 }
 
 func runEval(cmd *cobra.Command, args []string) {
-// 	opts := factory.GetBuildOpt(cmd)
-//
-// 	// build
-// 	v, err := build.Build(factory.GetBuildContext(cmd), &load.Config{
-// 		Tags:    opts.Tags,
-// 		TagVars: load.DefaultTagVars(),
-// 	})
-// 	if err != nil {
-// 		return nil, cue.Value{}, fmt.Errorf("could not build context: %w", err)
-// 	}
-//
-// 	// parse paths
-// 	paths := make([]cue.Path, 0, len(opts.Expressions))
-// 	for _, e := range opts.Expressions {
-// 		p := cue.ParsePath(e)
-// 		fmt.Printf("%q", p)
-// 		if p.Err() != nil {
-// 			return nil, v, fmt.Errorf("failed to parse expression %s: %w", e, p.Err())
-// 		}
-// 		paths = append(paths, p)
-// 	}
-
-    evalFrom(cmd)
-}
-
-func evalFrom(cmd *cobra.Command) { //([]manifest.Manifest, cue.Value, error) {
+    // Build opts, shall return a BuildOpt{} struct
     opts := factory.GetBuildOpt(cmd)
 
-    // build the cuebe context
+    // build the cuebe context, and return a cue.Value with the unified cue structure
     v, err := build.Build(factory.GetBuildContext(cmd), &load.Config{
         Tags:    opts.Tags,
         TagVars: load.DefaultTagVars(),
@@ -87,7 +59,24 @@ func evalFrom(cmd *cobra.Command) { //([]manifest.Manifest, cue.Value, error) {
         fmt.Errorf("could not build context: %w", err)
     }
 
-    // print the value
-    fmt.Printf("// %%v\n%v\n\n// %%# v\n%# v\n", v, v)
-    fmt.Println("End of pouet")
+    // Parse paths expressions (-e argument)
+    paths := make([]cue.Path, 0, len(opts.Expressions))
+    for _, e := range opts.Expressions {
+        p := cue.ParsePath(e)
+        if p.Err() != nil {
+            fmt.Errorf("failed to parse expression %s: %w", e, p.Err())
+        }
+        paths = append(paths, p)
+    }
+
+    // Output the cue evaluation WITHOUT concrete values
+    // If we have no paths, we dump the whole unified values
+    if len(paths) == 0 {
+        fmt.Printf("%v", v)
+    } else {
+        for _, p := range paths {
+            node := v.LookupPath(p)
+            fmt.Printf("%v", node)
+        }
+    }
 }
