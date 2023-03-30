@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,6 +30,9 @@ type Reqs interface {
 	// Compare returns an integer comparing two module versions.
 	// The result will be 0 if v == w, -1 if v < w, or +1 if v > w.
 	Compare(v, w string) int
+
+	// Replace the version in case it is latest
+	Replace()
 }
 
 // BuildList executes the mvs algorithm to find the build list for root.
