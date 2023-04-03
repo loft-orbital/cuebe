@@ -24,6 +24,7 @@ import (
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
+	"github.com/go-git/go-git/v5"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -39,7 +40,6 @@ import (
 // GetFS returns the cached filesystem for mod.
 // If the module is not yet cached, it will be first downloaded and then cached.
 func GetFS(mod module.Version) (billy.Filesystem, error) {
-	fmt.Println("on cache load ", mod)
 	fs, err := CacheLoad(mod)
 	if err != nil {
 		return nil, fmt.Errorf("loading module from cache: %w", err)
@@ -69,7 +69,6 @@ func GetReqs(fs billy.Filesystem) ([]module.Version, error) {
 
 // Download clone and store repository worktree into fs.
 func Download(mod module.Version, fs billy.Filesystem) error {
-	fmt.Println("Downloading ", mod)
 	meta, err := GetMeta(mod)
 	if err != nil {
 		return fmt.Errorf("failed to get meta: %w", err)
@@ -90,22 +89,13 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 	// will set gco.ReferenceName accordingly
 	// TODO: lot of patches and workaround here. We need to clean that up
 	if semver.IsValid(mod.Version) || semver.IsValid("v"+mod.Version) {
-		fmt.Println("Downloading version ", mod.Version)
 		// If mod.Version is considered a valid semver, we will presume the module version is a tag
 		gco.ReferenceName = plumbing.NewTagReferenceName(mod.Version)
 	} else {
-		fmt.Println("Downloading branch")
 		// If the module version is not a valid semver, we will consider it a branch
 		gco.ReferenceName = plumbing.NewBranchReferenceName(mod.Version)
-
-		// Clone git references if branch to pull new references if needed
-		_, err := gogit.PlainClone(fs.Root(), false, gco)
-		if err != nil {
-			return fmt.Errorf("Failed to plain clone repo: %w", err)
-		}
 	}
 
-	//mfs = memfs.New()
 	// clone repo
 	if _, err := gogit.Clone(memory.NewStorage(), mfs, gco); err != nil {
 		return fmt.Errorf("failed to clone repo: %w", err)
@@ -124,12 +114,49 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 func GetLatestTag(gco *gogit.CloneOptions) (string, error) {
 	mypath := strings.ReplaceAll(gco.URL, "https:/", "")
 	fs, err := CacheLoad(module.Version{Path: mypath})
-	fmt.Println("On plain clone ", mypath, fs.Root())
 
-	r, err := gogit.PlainClone(fs.Root(), false, gco)
-	if err != nil {
-		return "", fmt.Errorf("Failed to plain clone repo: %w", err)
+	var r *git.Repository
+	// Fetch and pull for latest tags if repo already exists
+	if _, err := fs.Stat(""); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", fmt.Errorf("unexpected stat error: %w", err)
+		}
+		r, err = gogit.PlainClone(fs.Root(), false, gco)
+		if err != nil {
+			return "", fmt.Errorf("Failed to plain clone repo: %w", err)
+		}
+	} else {
+		r, err = gogit.PlainOpenWithOptions(fs.Root(), &gogit.PlainOpenOptions{DetectDotGit: false})
+		if err != nil {
+			return "", fmt.Errorf("opening module from cache: %w", err)
+		}
+		// Fetching the repo for latest tags
+		err = r.Fetch(&gogit.FetchOptions{
+			Auth:       gco.Auth,
+			Force:      false,
+			Depth:      1,
+			Tags:       git.AllTags,
+			RemoteName: "origin",
+		})
+		// New references fetched
+		// NoErrAlreadyUpToDate returned as error whenever there are no new updates to fetch
+		if err == nil {
+			w, err := r.Worktree()
+			if err != nil {
+				return "", fmt.Errorf("error on worktree %w", err)
+			}
+			err = w.Pull(&gogit.PullOptions{
+				Auth:  gco.Auth,
+				Force: true,
+			})
+			if err != nil && err != git.NoErrAlreadyUpToDate {
+				return "", fmt.Errorf("error on pulling %w", err)
+			}
+		} else if err != git.NoErrAlreadyUpToDate {
+			return "", fmt.Errorf("error on fetching %w", err)
+		}
 	}
+
 	var latestTagCommit *object.Commit
 	tags, _ := r.Tags()
 	var latestTagName string
@@ -156,11 +183,10 @@ func GetLatestTag(gco *gogit.CloneOptions) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	fmt.Println("Latest tag : ", latestTagName)
 	return latestTagName, nil
 }
 
+// Not used, experimenal only
 func GetLatestTagRemote(repoUrl string, auth transport.AuthMethod) (string, error) {
 	// equivalent of git ls-remote
 	// Not possible to add flags

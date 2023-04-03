@@ -32,7 +32,7 @@ type Reqs interface {
 	Compare(v, w string) int
 
 	// Replace the version in case it is latest
-	Replace()
+	Replace() error
 }
 
 // BuildList executes the mvs algorithm to find the build list for root.
