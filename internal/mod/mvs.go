@@ -63,12 +63,14 @@ func New(dir string) (*Module, error) {
 // Vendor uses MVS algorithm to compute all requirements and vendor them
 // in the cue.mod/pkg directory.
 func (m *Module) Vendor() error {
-	m.reqs.Replace()
+	err := m.reqs.Replace()
+	if err != nil {
+		return fmt.Errorf("failed to get latest tags: %w", err)
+	}
 	reqs, err := mvs.BuildList(m.root, m.reqs)
 	if err != nil {
 		return fmt.Errorf("failed to build requirements: %w", err)
 	}
-
 	// Vendor requirements
 	for _, r := range reqs {
 		fs, err := GetFS(r)
@@ -80,7 +82,6 @@ func (m *Module) Vendor() error {
 		if err != nil {
 			return fmt.Errorf("could not chroot to %s: %w", dstpath, err)
 		}
-		fmt.Println("Vendoring ", dst, fs)
 		if err := BillyCopy(dst, fs); err != nil {
 			return fmt.Errorf("failed to vendor %s: %w", r, err)
 		}
@@ -120,11 +121,12 @@ func (mr ModReqs) Compare(v, w string) int {
 	return semver.Compare(v, w)
 }
 
-// Replace a tag
-func (mr ModReqs) Replace() {
+// Replace tag in case it is "latest"
+func (mr ModReqs) Replace() error {
+	// loop on required dependencies in module.cue file
 	for index, req := range mr.RootReqs {
 		if req.Version == "latest" {
-			// Get Latest Tag
+			// Get auth credentials and repo url
 			meta, _ := GetMeta(req)
 			gco := &gogit.CloneOptions{
 				URL: meta.RepoURL,
@@ -136,12 +138,15 @@ func (mr ModReqs) Replace() {
 					Password: meta.Credentials.Token,
 				}
 			}
+			// get latest tag
 			latestTag, err := GetLatestTag(gco)
 			if err != nil {
-				fmt.Errorf("failed to get the latest tag for %s: %w", req.Path, err)
+				return fmt.Errorf("failed to get the latest tag for %s: %s. Define a specific tag instead", req.Path, err)
 			}
+			// Remove the "latest" dependency and replace it with the tagged one
 			mr.RootReqs = append(mr.RootReqs[:index])
 			mr.RootReqs = append(mr.RootReqs, module.Version{Path: req.Path, Version: latestTag})
 		}
 	}
+	return nil
 }
