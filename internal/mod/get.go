@@ -44,7 +44,7 @@ func GetFS(mod module.Version) (billy.Filesystem, error) {
 	if err != nil {
 		return nil, fmt.Errorf("loading module from cache: %w", err)
 	}
-
+	// if cache doesn't exist
 	if _, err := fs.Stat(""); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("unexpected stat error: %w", err)
@@ -53,6 +53,24 @@ func GetFS(mod module.Version) (billy.Filesystem, error) {
 		if err := Download(mod, fs); err != nil {
 			return nil, fmt.Errorf("failed to download module: %w", err)
 		}
+	} else if !semver.IsValid(mod.Version) && !semver.IsValid("v"+mod.Version) && mod.Version != "latest" {
+		// if branch exits on cache update it
+		meta, err := GetMeta(mod)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get meta: %w", err)
+		}
+		gco := &gogit.CloneOptions{
+			URL: meta.RepoURL,
+		}
+		// set credentials
+		if meta.Credentials != nil {
+			gco.Auth = &http.BasicAuth{
+				Username: meta.Credentials.User,
+				Password: meta.Credentials.Token,
+			}
+		}
+		var r *git.Repository
+		FetchLatest(r, gco, fs)
 	}
 
 	return fs, nil
@@ -94,6 +112,15 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 	} else {
 		// If the module version is not a valid semver, we will consider it a branch
 		gco.ReferenceName = plumbing.NewBranchReferenceName(mod.Version)
+		// Get git references
+		if z, err := IsRemoteBranch(gco.URL, gco.Auth, mod.Version); z && err != nil {
+			_, err = gogit.PlainClone(fs.Root(), false, gco)
+			if err != nil {
+				return fmt.Errorf("failed to plain clone repo: %w", err)
+			}
+		} else {
+			return fmt.Errorf("branch %s does not exist", mod.Version)
+		}
 	}
 
 	// clone repo
@@ -123,40 +150,15 @@ func GetLatestTag(gco *gogit.CloneOptions) (string, error) {
 		}
 		r, err = gogit.PlainClone(fs.Root(), false, gco)
 		if err != nil {
-			return "", fmt.Errorf("Failed to plain clone repo: %w", err)
+			return "", fmt.Errorf("failed to plain clone repo: %w", err)
 		}
 	} else {
-		r, err = gogit.PlainOpenWithOptions(fs.Root(), &gogit.PlainOpenOptions{DetectDotGit: false})
+		r, err = FetchLatest(r, gco, fs)
 		if err != nil {
-			return "", fmt.Errorf("opening module from cache: %w", err)
-		}
-		// Fetching the repo for latest tags
-		err = r.Fetch(&gogit.FetchOptions{
-			Auth:       gco.Auth,
-			Force:      false,
-			Depth:      1,
-			Tags:       git.AllTags,
-			RemoteName: "origin",
-		})
-		// New references fetched
-		// NoErrAlreadyUpToDate returned as error whenever there are no new updates to fetch
-		if err == nil {
-			w, err := r.Worktree()
-			if err != nil {
-				return "", fmt.Errorf("error on worktree %w", err)
-			}
-			err = w.Pull(&gogit.PullOptions{
-				Auth:  gco.Auth,
-				Force: true,
-			})
-			if err != nil && err != git.NoErrAlreadyUpToDate {
-				return "", fmt.Errorf("error on pulling %w", err)
-			}
-		} else if err != git.NoErrAlreadyUpToDate {
-			return "", fmt.Errorf("error on fetching %w", err)
+			return "", fmt.Errorf("failed to fetch latest references: %w", err)
 		}
 	}
-
+	// getting latest tag based on commit timestamp
 	var latestTagCommit *object.Commit
 	tags, _ := r.Tags()
 	var latestTagName string
@@ -184,6 +186,64 @@ func GetLatestTag(gco *gogit.CloneOptions) (string, error) {
 		return "", err
 	}
 	return latestTagName, nil
+}
+
+func FetchLatest(r *git.Repository, gco *gogit.CloneOptions, fs billy.Filesystem) (*git.Repository, error) {
+	r, err := gogit.PlainOpenWithOptions(fs.Root(), &gogit.PlainOpenOptions{DetectDotGit: false})
+	if err != nil {
+		return nil, fmt.Errorf("opening module from cache: %w", err)
+	}
+	// Fetching the repo for latest tags
+	err = r.Fetch(&gogit.FetchOptions{
+		Auth:       gco.Auth,
+		Force:      false,
+		Depth:      1,
+		Tags:       git.AllTags,
+		RemoteName: "origin",
+	})
+	// New references fetched
+	// NoErrAlreadyUpToDate returned as error whenever there are no new updates to fetch
+	if err == nil {
+		w, err := r.Worktree()
+		if err != nil {
+			return nil, fmt.Errorf("error on worktree %w", err)
+		}
+		err = w.Pull(&gogit.PullOptions{
+			Auth:  gco.Auth,
+			Force: true,
+		})
+		if err != nil && err != git.NoErrAlreadyUpToDate {
+			return nil, fmt.Errorf("error on pulling %w", err)
+		}
+	} else if err != git.NoErrAlreadyUpToDate {
+		return nil, fmt.Errorf("error on fetching %w", err)
+	}
+	return r, nil
+}
+
+func IsRemoteBranch(repoUrl string, auth transport.AuthMethod, branchName string) (bool, error) {
+	// equivalent of git ls-remote
+	// Not possible to add flags
+	rem := gogit.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{repoUrl},
+	})
+	// List returned is not sorted
+	refs, err := rem.List(&gogit.ListOptions{
+		Auth: auth,
+	})
+	if err != nil {
+		return false, err
+	}
+	for _, ref := range refs {
+		// It returns also /ref/branch_name
+		if !ref.Name().IsBranch() {
+			if ref.Name().Short() == branchName {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 // Not used, experimenal only
