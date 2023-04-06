@@ -113,7 +113,7 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 		// If the module version is not a valid semver, we will consider it a branch
 		gco.ReferenceName = plumbing.NewBranchReferenceName(mod.Version)
 		// Get git references
-		if z, err := IsRemoteBranch(gco.URL, gco.Auth, mod.Version); z && err != nil {
+		if z, err := IsRemoteBranch(gco.URL, gco.Auth, mod.Version); z && err == nil {
 			_, err = gogit.PlainClone(fs.Root(), false, gco)
 			if err != nil {
 				return fmt.Errorf("failed to plain clone repo: %w", err)
@@ -224,6 +224,7 @@ func FetchLatest(r *git.Repository, gco *gogit.CloneOptions, fs billy.Filesystem
 func IsRemoteBranch(repoUrl string, auth transport.AuthMethod, branchName string) (bool, error) {
 	// equivalent of git ls-remote
 	// Not possible to add flags
+	fmt.Println("inaa", repoUrl, branchName)
 	rem := gogit.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name: "origin",
 		URLs: []string{repoUrl},
@@ -233,17 +234,16 @@ func IsRemoteBranch(repoUrl string, auth transport.AuthMethod, branchName string
 		Auth: auth,
 	})
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error creating remote reference: %w", err)
 	}
 	for _, ref := range refs {
-		// It returns also /ref/branch_name
-		if !ref.Name().IsBranch() {
+		if ref.Name().IsBranch() {
 			if ref.Name().Short() == branchName {
 				return true, nil
 			}
 		}
 	}
-	return false, nil
+	return false, fmt.Errorf("nothing found")
 }
 
 // Not used, experimenal only
