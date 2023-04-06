@@ -46,6 +46,7 @@ cuebe eval .
 	return cmd
 }
 
+// TODO: Rely on Cobra err catching system
 func runEval(cmd *cobra.Command, args []string) {
 	// Build opts, shall return a BuildOpt{} struct
 	opts := factory.GetBuildOpt(cmd)
@@ -56,15 +57,21 @@ func runEval(cmd *cobra.Command, args []string) {
 		TagVars: load.DefaultTagVars(),
 	})
 	if err != nil {
-		fmt.Errorf("could not build context: %w", err)
+		cobra.CheckErr(fmt.Errorf("could not build context: %w", err))
 	}
+
+	// // test validate
+	// // Add concrete flag here
+	// if err = v.Validate(cue.Concrete(true)); err != nil {
+	// 	cobra.CheckErr(fmt.Errorf("validation error: %v", err))
+	// }
 
 	// Parse paths expressions (-e argument)
 	paths := make([]cue.Path, 0, len(opts.Expressions))
 	for _, e := range opts.Expressions {
 		p := cue.ParsePath(e)
 		if p.Err() != nil {
-			fmt.Errorf("failed to parse expression %s: %w", e, p.Err())
+			cobra.CheckErr(fmt.Errorf("failed to parse expression %s: %w", e, p.Err()))
 		}
 		paths = append(paths, p)
 	}

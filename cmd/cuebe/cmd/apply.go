@@ -123,6 +123,11 @@ func manifestFrom(cmd *cobra.Command) ([]manifest.Manifest, cue.Value, error) {
 		return nil, cue.Value{}, fmt.Errorf("could not build context: %w", err)
 	}
 
+	// Before trying to extract the manifests. We must ensure all values are concrete
+	if err = v.Validate(cue.Concrete(true)); err != nil {
+		return nil, v, fmt.Errorf("checking for concrete value and field definitions: %w", err)
+	}
+
 	// parse paths
 	paths := make([]cue.Path, 0, len(opts.Expressions))
 	for _, e := range opts.Expressions {
