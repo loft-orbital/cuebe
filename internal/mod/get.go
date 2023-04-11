@@ -72,7 +72,6 @@ func GetFS(mod module.Version) (billy.Filesystem, error) {
 		var r *git.Repository
 		FetchLatest(r, gco, fs)
 	}
-
 	return fs, nil
 }
 
@@ -111,21 +110,25 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 		gco.ReferenceName = plumbing.NewTagReferenceName(mod.Version)
 	} else {
 		// If the module version is not a valid semver, we will consider it a branch
-		gco.ReferenceName = plumbing.NewBranchReferenceName(mod.Version)
-		// Get git references
-		if z, err := IsRemoteBranch(gco.URL, gco.Auth, mod.Version); z && err == nil {
-			_, err = gogit.PlainClone(fs.Root(), false, gco)
-			if err != nil {
-				return fmt.Errorf("failed to plain clone repo: %w", err)
-			}
-		} else {
-			return fmt.Errorf("branch %s does not exist", mod.Version)
-		}
+		gco.ReferenceName = plumbing.NewBranchReferenceName("main")
+
 	}
 
 	// clone repo
-	if _, err := gogit.Clone(memory.NewStorage(), mfs, gco); err != nil {
+	storage := memory.NewStorage()
+	if _, err := gogit.Clone(storage, mfs, gco); err != nil {
 		return fmt.Errorf("failed to clone repo: %w", err)
+	}
+	if gco.ReferenceName == "main" {
+		r, err := gogit.Open(storage, mfs)
+		if err != nil {
+			return fmt.Errorf("failed to open repo: %w", err)
+		}
+		w, err := r.Worktree()
+		if err != nil {
+			return fmt.Errorf("failed to get worktree for repo: %w", err)
+		}
+		w.Checkout(&gogit.CheckoutOptions{Hash: plumbing.NewHash(mod.Version), Force: true})
 	}
 
 	if sd := strings.TrimPrefix(mod.Path, meta.RootPath); sd != "" {
@@ -134,6 +137,7 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 			return fmt.Errorf("failed to chroot subpath %s %w", sd, err)
 		}
 	}
+
 	return BillyCopy(fs, mfs)
 }
 
@@ -224,7 +228,6 @@ func FetchLatest(r *git.Repository, gco *gogit.CloneOptions, fs billy.Filesystem
 func IsRemoteBranch(repoUrl string, auth transport.AuthMethod, branchName string) (bool, error) {
 	// equivalent of git ls-remote
 	// Not possible to add flags
-	fmt.Println("inaa", repoUrl, branchName)
 	rem := gogit.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name: "origin",
 		URLs: []string{repoUrl},
@@ -273,4 +276,31 @@ func GetLatestTagRemote(gco *gogit.CloneOptions) (string, error) {
 	semver.Sort(tags)
 	// Return last sorted tag
 	return tags[len(tags)-1], nil
+}
+
+// Get the latest commit sha remotely, without downloading the repo
+func GetLatestCommitRemote(gco *gogit.CloneOptions, mod module.Version) (string, error) {
+	// equivalent of git ls-remote
+	// Not possible to add flags, get all tags instead and sort them based on semver versionning
+	rem := gogit.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+		Name:  "origin",
+		URLs:  []string{gco.URL},
+		Fetch: []config.RefSpec{"+refs/tags/*:refs/tags/*"},
+	})
+	// List returned is not sorted
+	refs, err := rem.List(&gogit.ListOptions{
+		Auth: gco.Auth,
+	})
+	if err != nil {
+		return "", fmt.Errorf("error listing remote branches: %w", err)
+	}
+
+	for _, ref := range refs {
+		if ref.Name().IsBranch() && ref.Name().Short() == mod.Version {
+			hash := ref.Hash()
+			return hash.String(), nil
+		}
+	}
+
+	return "", fmt.Errorf("error branch %s not found", mod.Version)
 }

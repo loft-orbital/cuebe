@@ -124,20 +124,22 @@ func (mr ModReqs) Compare(v, w string) int {
 // Replace tag in case it is "latest"
 func (mr ModReqs) Replace() error {
 	// loop on required dependencies in module.cue file
+
 	for index, req := range mr.RootReqs {
+		// Get auth credentials and repo url
+		meta, _ := GetMeta(req)
+		gco := &gogit.CloneOptions{
+			URL: meta.RepoURL,
+		}
+		// set credentials
+		if meta.Credentials != nil {
+			gco.Auth = &http.BasicAuth{
+				Username: meta.Credentials.User,
+				Password: meta.Credentials.Token,
+			}
+		}
+		// If version detected as latest, replace it with the latest tag
 		if req.Version == "latest" {
-			// Get auth credentials and repo url
-			meta, _ := GetMeta(req)
-			gco := &gogit.CloneOptions{
-				URL: meta.RepoURL,
-			}
-			// set credentials
-			if meta.Credentials != nil {
-				gco.Auth = &http.BasicAuth{
-					Username: meta.Credentials.User,
-					Password: meta.Credentials.Token,
-				}
-			}
 			// get latest tag
 			latestTag, err := GetLatestTagRemote(gco)
 			if err != nil {
@@ -146,7 +148,17 @@ func (mr ModReqs) Replace() error {
 			// Remove the "latest" dependency and replace it with the tagged one
 			mr.RootReqs = append(mr.RootReqs[:index])
 			mr.RootReqs = append(mr.RootReqs, module.Version{Path: req.Path, Version: latestTag})
+		} else if !semver.IsValid(req.Version) || !semver.IsValid("v"+req.Version) {
+			latestHash, err := GetLatestCommitRemote(gco, req)
+			if err != nil {
+				return fmt.Errorf("failed to get the latest hash for %s: %s. Define a valid branch or a tag instead", req.Path, err)
+			}
+			// Remove the "latest" dependency and replace it with the tagged one
+			mr.RootReqs = append(mr.RootReqs[:index])
+			mr.RootReqs = append(mr.RootReqs, module.Version{Path: req.Path, Version: latestHash})
+
 		}
+		// If version detected as branch, replace it the latest commit sha of the branch
 	}
 	return nil
 }
