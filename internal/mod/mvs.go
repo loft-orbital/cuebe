@@ -63,7 +63,7 @@ func New(dir string) (*Module, error) {
 // Vendor uses MVS algorithm to compute all requirements and vendor them
 // in the cue.mod/pkg directory.
 func (m *Module) Vendor() error {
-	err := m.reqs.Replace()
+	err := m.reqs.ReplaceVersion()
 	if err != nil {
 		return fmt.Errorf("failed to get latest tags: %w", err)
 	}
@@ -122,7 +122,7 @@ func (mr ModReqs) Compare(v, w string) int {
 }
 
 // Replace tag in case it is "latest"
-func (mr ModReqs) Replace() error {
+func (mr ModReqs) ReplaceVersion() error {
 	// loop on required dependencies in module.cue file
 
 	for index, req := range mr.RootReqs {

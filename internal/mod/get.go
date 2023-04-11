@@ -109,7 +109,6 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 		// If mod.Version is considered a valid semver, we will presume the module version is a tag
 		gco.ReferenceName = plumbing.NewTagReferenceName(mod.Version)
 	} else {
-		// If the module version is not a valid semver, we will consider it a branch
 		gco.ReferenceName = plumbing.NewBranchReferenceName("main")
 
 	}
@@ -119,7 +118,9 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 	if _, err := gogit.Clone(storage, mfs, gco); err != nil {
 		return fmt.Errorf("failed to clone repo: %w", err)
 	}
-	if gco.ReferenceName == "main" {
+
+	// In case we cloned the main branch, we need to checkout to the commit Hash
+	if gco.ReferenceName.Short() == "main" {
 		r, err := gogit.Open(storage, mfs)
 		if err != nil {
 			return fmt.Errorf("failed to open repo: %w", err)

@@ -59,7 +59,7 @@ func (mrg MockReqs) Required(m module.Version) ([]module.Version, error) {
 func (mrg MockReqs) Compare(v, w string) int {
 	return semver.Compare(v, w)
 }
-func (mrg MockReqs) Replace() error {
+func (mrg MockReqs) ReplaceVersion() error {
 	return nil
 }
 
