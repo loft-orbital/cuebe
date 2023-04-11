@@ -139,7 +139,7 @@ func (mr ModReqs) Replace() error {
 				}
 			}
 			// get latest tag
-			latestTag, err := GetLatestTag(gco)
+			latestTag, err := GetLatestTagRemote(gco)
 			if err != nil {
 				return fmt.Errorf("failed to get the latest tag for %s: %s. Define a specific tag instead", req.Path, err)
 			}

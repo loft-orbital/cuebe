@@ -246,27 +246,31 @@ func IsRemoteBranch(repoUrl string, auth transport.AuthMethod, branchName string
 	return false, fmt.Errorf("nothing found")
 }
 
-// Not used, experimenal only
-func GetLatestTagRemote(repoUrl string, auth transport.AuthMethod) (string, error) {
+// Get the latest tag remotely, without downloading the repo
+func GetLatestTagRemote(gco *gogit.CloneOptions) (string, error) {
 	// equivalent of git ls-remote
-	// Not possible to add flags
+	// Not possible to add flags, get all tags instead and sort them based on semver versionning
 	rem := gogit.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name:  "origin",
-		URLs:  []string{repoUrl},
+		URLs:  []string{gco.URL},
 		Fetch: []config.RefSpec{"+refs/tags/*:refs/tags/*"},
 	})
 	// List returned is not sorted
 	refs, err := rem.List(&gogit.ListOptions{
-		Auth: auth,
+		Auth: gco.Auth,
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error listing remote tags: %w", err)
 	}
+	tags := semver.ByVersion{}
 	for _, ref := range refs {
-		// It returns also /ref/branch_name
-		if !ref.Name().IsBranch() {
-			fmt.Println("Tag ", ref.Name().Short())
+		// It returns also /ref/branch_name, do not take that into account
+		// Get only semver ones
+		if !ref.Name().IsBranch() && semver.IsValid("v"+ref.Name().Short()) {
+			tags = append(tags, ref.Name().Short())
 		}
 	}
-	return "", nil
+	semver.Sort(tags)
+	// Return last sorted tag
+	return tags[len(tags)-1], nil
 }
