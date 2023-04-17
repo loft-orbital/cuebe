@@ -33,9 +33,10 @@ import (
 
 // Module represents a CUE module
 type Module struct {
-	root    module.Version
-	storage billy.Filesystem
-	reqs    mvs.Reqs
+	root         module.Version
+	storage      billy.Filesystem
+	reqs         mvs.Reqs
+	replacements map[string]string
 }
 
 // New creates a new Module from dir.
@@ -49,7 +50,6 @@ func New(dir string) (*Module, error) {
 		}
 		return nil, fmt.Errorf("%s is not a cue module, try running `cue init`", dir)
 	}
-
 	return &Module{
 		root:    module.Version{Path: mf.Module},
 		storage: fs,
@@ -57,6 +57,7 @@ func New(dir string) (*Module, error) {
 			Root:     mf.Module,
 			RootReqs: mf.Require,
 		},
+		replacements: mf.Replace,
 	}, nil
 }
 
@@ -71,12 +72,26 @@ func (m *Module) Vendor() error {
 	if err != nil {
 		return fmt.Errorf("failed to build requirements: %w", err)
 	}
-	// Vendor requirements
+	var fs billy.Filesystem
+	// Vendor requirements but not replacements
+	// Check if any dependency needs to be replaced by a local one
 	for _, r := range reqs {
-		fs, err := GetFS(r)
-		if err != nil {
-			return fmt.Errorf("could get %s: %w", r, err)
+		// If Depndenency is found as a local replacement, do not download it on cache
+		if _, found := m.replacements[r.Path]; found {
+			if _, err := os.Stat(m.replacements[r.Path]); os.IsNotExist(err) {
+				return fmt.Errorf("Path %s does not exist", m.replacements[r.Path])
+			}
+			fs = osfs.New(m.replacements[r.Path])
+			r.Path = r.Path + " -> " + m.replacements[r.Path]
+			r.Version = ""
+		} else {
+			// Check on cache for dependency to be downloaded
+			fs, err = GetFS(r)
+			if err != nil {
+				return fmt.Errorf("could get %s: %w", r, err)
+			}
 		}
+		// Create local vendoring path
 		dstpath := filepath.Join("cue.mod", "pkg", r.Path)
 		dst, err := m.storage.Chroot(dstpath)
 		if err != nil {
@@ -148,7 +163,7 @@ func (mr ModReqs) ReplaceVersion() error {
 			// Remove the "latest" dependency and replace it with the tagged one
 			mr.RootReqs = append(mr.RootReqs[:index])
 			mr.RootReqs = append(mr.RootReqs, module.Version{Path: req.Path, Version: latestTag})
-		} else if !semver.IsValid(req.Version) || !semver.IsValid("v"+req.Version) {
+		} else if !semver.IsValid(req.Version) && !semver.IsValid("v"+req.Version) {
 			latestHash, err := GetLatestCommitRemote(gco, req)
 			if err != nil {
 				return fmt.Errorf("failed to get the latest hash for %s: %s. Define a valid branch or a tag instead", req.Path, err)
