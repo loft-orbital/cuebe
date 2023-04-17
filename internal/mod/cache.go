@@ -54,7 +54,7 @@ func CacheLoad(m module.Version) (billy.Filesystem, error) {
 		return nil, fmt.Errorf("getting cache: %w", err)
 	}
 
-	fmt.Printf("%+v\n", m)
+	//fmt.Printf("%+v\n", m)
 	return cd.Chroot(m.String())
 }
 
