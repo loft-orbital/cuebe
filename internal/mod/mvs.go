@@ -75,15 +75,14 @@ func (m *Module) Vendor() error {
 	var fs billy.Filesystem
 	// Vendor requirements but not replacements
 	// Check if any dependency needs to be replaced by a local one
+	var found bool
 	for _, r := range reqs {
 		// If Depndenency is found as a local replacement, do not download it on cache
-		if _, found := m.replacements[r.Path]; found {
+		if _, found = m.replacements[r.Path]; found {
 			if _, err := os.Stat(m.replacements[r.Path]); os.IsNotExist(err) {
 				return fmt.Errorf("Path %s does not exist", m.replacements[r.Path])
 			}
 			fs = osfs.New(m.replacements[r.Path])
-			r.Path = r.Path + " -> " + m.replacements[r.Path]
-			r.Version = ""
 		} else {
 			// Check on cache for dependency to be downloaded
 			fs, err = GetFS(r)
@@ -100,7 +99,11 @@ func (m *Module) Vendor() error {
 		if err := BillyCopy(dst, fs); err != nil {
 			return fmt.Errorf("failed to vendor %s: %w", r, err)
 		}
-		fmt.Printf("vendored %s\n", r)
+		if found {
+			fmt.Printf("replaced %s -> %s\n", r, m.replacements[r.Path])
+		} else {
+			fmt.Printf("vendored %s\n", r)
+		}
 	}
 
 	return nil

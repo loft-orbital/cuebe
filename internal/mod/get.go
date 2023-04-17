@@ -28,8 +28,6 @@ import (
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/loft-orbital/cuebe/pkg/modfile"
@@ -142,57 +140,6 @@ func Download(mod module.Version, fs billy.Filesystem) error {
 	return BillyCopy(fs, mfs)
 }
 
-// Return latest Tag
-func GetLatestTag(gco *gogit.CloneOptions) (string, error) {
-	mypath := strings.ReplaceAll(gco.URL, "https:/", "")
-	fs, err := CacheLoad(module.Version{Path: mypath})
-
-	var r *git.Repository
-	// Fetch and pull for latest tags if repo already exists
-	if _, err := fs.Stat(""); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return "", fmt.Errorf("unexpected stat error: %w", err)
-		}
-		r, err = gogit.PlainClone(fs.Root(), false, gco)
-		if err != nil {
-			return "", fmt.Errorf("failed to plain clone repo: %w", err)
-		}
-	} else {
-		r, err = FetchLatest(r, gco, fs)
-		if err != nil {
-			return "", fmt.Errorf("failed to fetch latest references: %w", err)
-		}
-	}
-	// getting latest tag based on commit timestamp
-	var latestTagCommit *object.Commit
-	tags, _ := r.Tags()
-	var latestTagName string
-	err = tags.ForEach(func(t *plumbing.Reference) error {
-		revision := plumbing.Revision(t.Name().String())
-		tagCommitHash, err := r.ResolveRevision(revision)
-		commit, err := r.CommitObject(*tagCommitHash)
-		if err != nil {
-			return err
-		}
-
-		if latestTagCommit == nil {
-			latestTagCommit = commit
-			latestTagName = t.Name().Short()
-			t.Type()
-		}
-
-		if commit.Committer.When.After(latestTagCommit.Committer.When) {
-			latestTagCommit = commit
-			latestTagName = t.Name().Short()
-		}
-		return nil
-	})
-	if err != nil {
-		return "", err
-	}
-	return latestTagName, nil
-}
-
 func FetchLatest(r *git.Repository, gco *gogit.CloneOptions, fs billy.Filesystem) (*git.Repository, error) {
 	r, err := gogit.PlainOpenWithOptions(fs.Root(), &gogit.PlainOpenOptions{DetectDotGit: false})
 	if err != nil {
@@ -224,30 +171,6 @@ func FetchLatest(r *git.Repository, gco *gogit.CloneOptions, fs billy.Filesystem
 		return nil, fmt.Errorf("error on fetching %w", err)
 	}
 	return r, nil
-}
-
-func IsRemoteBranch(repoUrl string, auth transport.AuthMethod, branchName string) (bool, error) {
-	// equivalent of git ls-remote
-	// Not possible to add flags
-	rem := gogit.NewRemote(memory.NewStorage(), &config.RemoteConfig{
-		Name: "origin",
-		URLs: []string{repoUrl},
-	})
-	// List returned is not sorted
-	refs, err := rem.List(&gogit.ListOptions{
-		Auth: auth,
-	})
-	if err != nil {
-		return false, fmt.Errorf("error creating remote reference: %w", err)
-	}
-	for _, ref := range refs {
-		if ref.Name().IsBranch() {
-			if ref.Name().Short() == branchName {
-				return true, nil
-			}
-		}
-	}
-	return false, fmt.Errorf("nothing found")
 }
 
 // Get the latest tag remotely, without downloading the repo
