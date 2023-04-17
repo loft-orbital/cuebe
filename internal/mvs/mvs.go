@@ -31,7 +31,7 @@ type Reqs interface {
 	// The result will be 0 if v == w, -1 if v < w, or +1 if v > w.
 	Compare(v, w string) int
 
-	// Replace the version in case it is latest
+	// Replace the version in case it is latest or a branch name
 	ReplaceVersion() error
 }
 
@@ -43,13 +43,11 @@ func BuildList(root module.Version, reqs Reqs) ([]module.Version, error) {
 	next := []module.Version{root}
 	wc := 10                           // number of parallel worker
 	rqc := make(chan []module.Version) // module requirements channel workers use to communicate
-
-	it := 0 // current index in the 'next' slice
+	it := 0                            // current index in the 'next' slice
 	for it < len(next) {
 		eg, _ := errgroup.WithContext(context.Background())
 		si := min(len(next), it+wc) // number of worker that will be spawned
 		done := make(chan error)
-
 		// fire workers
 		for i := it; i < si; i++ {
 			mod := next[i]
@@ -101,7 +99,6 @@ func buildWorker(mod module.Version, rg Reqs, reqs chan<- []module.Version) func
 		if err != nil {
 			return err
 		}
-
 		reqs <- r
 		return nil
 	}

@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,16 +28,14 @@ func Parse(file string) (*File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not parse modfile: %w", err)
 	}
-
 	ctx := cuecontext.New()
 	v := ctx.BuildFile(cf)
 	if v.Err() != nil {
-		return nil, fmt.Errorf("could not build modfile: %w", err)
+		return nil, fmt.Errorf("could not build modfile: %w", v.Err())
 	}
 	f := &File{}
 	if err := v.Decode(f); err != nil {
 		return nil, fmt.Errorf("failed to decode modfile: %w", err)
 	}
-
 	return f, nil
 }
