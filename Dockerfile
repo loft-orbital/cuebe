@@ -24,7 +24,7 @@ RUN go install cuelang.org/go/cmd/cue@v0.4.3
 FROM docker:19.03.11 as static-docker-source
 FROM alpine:3.15.0 as gcloud-sdk-build
 
-ARG CLOUD_SDK_VERSION=367.0.0
+ARG CLOUD_SDK_VERSION=434.0.0
 ENV CLOUD_SDK_VERSION=${CLOUD_SDK_VERSION}
 
 RUN apk --no-cache add curl
@@ -62,7 +62,10 @@ RUN apk --no-cache add \
 RUN gcloud config set core/disable_usage_reporting true && \
     gcloud config set component_manager/disable_update_check true && \
     gcloud config set metrics/environment github_docker_image && \
+    gcloud components install gke-gcloud-auth-plugin && \
     gcloud --version
+
+ENV USE_GKE_GCLOUD_AUTH_PLUGIN=True
 
 RUN git config --system credential.'https://source.developers.google.com'.helper gcloud.sh
 VOLUME ["/root/.config"]
