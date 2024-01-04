@@ -1,10 +1,11 @@
 # Cuebe
 
-Kubernetes release manager powered by [CUE](https://cuelang.org/).
+> This repository is now in read-only mode.
+> If you're looking for a CUE based Kubernetes package manager, we recommend you to use [timoni](https://timoni.sh).
+> We've moved our effort into timoni, helping its maintenance to avoid spreading efforts between very similar solutions.
+> We believe timoni now covers everything cuebe was intended to be.
 
-> 🚧 Disclaimer:
-> Cuebe is in beta version
-> It is actively maintained but not yet ready to be used in production.
+Kubernetes release manager powered by [CUE](https://cuelang.org/).
 
 ## Why?
 
