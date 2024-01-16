@@ -70,7 +70,7 @@ cuebe apply --dry-run .
 }
 
 func runApply(cmd *cobra.Command, args []string) {
-	mfs, build, err := manifetsFrom(cmd)
+	mfs, build, err := manifestFrom(cmd)
 	cobra.CheckErr(err)
 
 	// group by Instances
@@ -111,7 +111,7 @@ func getK8sConfig(context string) (*utils.K8sConfig, error) {
 }
 
 // TODO move that in its own package
-func manifetsFrom(cmd *cobra.Command) ([]manifest.Manifest, cue.Value, error) {
+func manifestFrom(cmd *cobra.Command) ([]manifest.Manifest, cue.Value, error) {
 	opts := factory.GetBuildOpt(cmd)
 
 	// build
@@ -121,6 +121,11 @@ func manifetsFrom(cmd *cobra.Command) ([]manifest.Manifest, cue.Value, error) {
 	})
 	if err != nil {
 		return nil, cue.Value{}, fmt.Errorf("could not build context: %w", err)
+	}
+
+	// Before trying to extract the manifests. We must ensure all values are concrete
+	if err = v.Validate(cue.Concrete(true)); err != nil {
+		return nil, v, fmt.Errorf("checking for concrete value and field definitions: %w", err)
 	}
 
 	// parse paths
